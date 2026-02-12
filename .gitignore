@@ -1,4 +1,8 @@
-.history/
+# Ignore all data files
+data/
+*.csv
+*.json
+
+# Ignore system files
 __pycache__/
-.env
-*.pyc
+.history/
