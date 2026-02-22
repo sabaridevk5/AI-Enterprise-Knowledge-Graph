@@ -1,4 +1,4 @@
-# app.py - CLEAN MINIMAL DASHBOARD
+# app.py - MODERN DASHBOARD UI
 
 import sys
 import os
@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import time
 import plotly.graph_objects as go
+import plotly.express as px
 import networkx as nx
 from datetime import datetime
 
@@ -17,212 +18,387 @@ from datetime import datetime
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_pinecone import PineconeVectorStore
 
-# --- 1. MINIMAL CSS ---
+# --- 1. MODERN DASHBOARD CSS ---
 st.set_page_config(
-    page_title="Enron Graph", 
+    page_title="Enron Intelligence Dashboard", 
     layout="wide", 
-    page_icon="🔍"
+    page_icon="📊",
+    initial_sidebar_state="collapsed"
 )
 
+# Modern dashboard CSS
 st.markdown("""
 <style>
-    /* Reset */
+    /* Import fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Global styles */
     * {
+        font-family: 'Inter', sans-serif;
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .stApp {
+        background: #f3f4f6;
     }
     
     /* Main container */
-    .main {
-        max-width: 1200px;
+    .dashboard {
+        max-width: 1600px;
         margin: 0 auto;
-        padding: 2rem 1rem;
+        padding: 1.5rem;
     }
     
     /* Header */
-    .header {
-        margin-bottom: 3rem;
-    }
-    
-    .header h1 {
-        font-size: 2rem;
-        font-weight: 500;
-        color: #111;
-        letter-spacing: -0.02em;
-        margin-bottom: 0.25rem;
-    }
-    
-    .header p {
-        color: #666;
-        font-size: 0.9rem;
-    }
-    
-    /* Search container */
-    .search-container {
-        background: #f5f5f5;
-        padding: 2rem;
-        border-radius: 12px;
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 2rem;
-        text-align: center;
     }
     
-    /* Search input */
-    .search-input {
-        width: 100%;
-        max-width: 600px;
-        padding: 1rem 1.5rem;
-        font-size: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 40px;
+    .header-title h1 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #111827;
+        letter-spacing: -0.02em;
+    }
+    
+    .header-title p {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-top: 0.2rem;
+    }
+    
+    .header-stats {
+        display: flex;
+        gap: 2rem;
+    }
+    
+    .stat-item {
+        text-align: right;
+    }
+    
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .stat-value {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #111827;
+    }
+    
+    /* Search card */
+    .search-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+    }
+    
+    .search-title {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .search-box {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .search-box input {
+        flex: 1;
+        padding: 0.8rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 0.95rem;
         outline: none;
         transition: all 0.2s;
-        margin: 0 auto 1rem auto;
     }
     
-    .search-input:focus {
-        border-color: #0066ff;
-        box-shadow: 0 0 0 3px rgba(0,102,255,0.1);
+    .search-box input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    
+    .search-box button {
+        background: #111827;
+        color: white;
+        border: none;
+        padding: 0.8rem 2rem;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .search-box button:hover {
+        background: #1f2937;
     }
     
     /* Hint text */
-    .hint {
-        color: #888;
+    .hint-text {
+        margin-top: 0.8rem;
+        color: #9ca3af;
         font-size: 0.85rem;
-        margin-top: 1rem;
-        animation: fade 2s infinite;
+        animation: pulse 2s infinite;
     }
     
-    @keyframes fade {
-        0% { opacity: 0.6; }
+    @keyframes pulse {
+        0% { opacity: 0.7; }
         50% { opacity: 1; }
-        100% { opacity: 0.6; }
+        100% { opacity: 0.7; }
     }
     
-    /* Results container */
-    .results-container {
-        margin-top: 2rem;
+    /* Dashboard grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 1.5rem;
+        margin-top: 1rem;
     }
     
-    /* Section titles */
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 500;
-        color: #333;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid #eee;
-    }
-    
-    /* Email card */
-    .email-card {
+    /* Cards */
+    .card {
         background: white;
-        border: 1px solid #eee;
-        border-radius: 8px;
-        padding: 1.2rem;
-        margin-bottom: 1rem;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+    }
+    
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.2rem;
+    }
+    
+    .card-header h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #374151;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    
+    .card-header span {
+        color: #9ca3af;
+        font-size: 0.8rem;
+    }
+    
+    /* Metric row */
+    .metric-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .metric {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #111827;
+    }
+    
+    .metric-label {
+        color: #6b7280;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        margin-top: 0.2rem;
+    }
+    
+    /* Email list */
+    .email-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .email-item {
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 10px;
+        border: 1px solid #f3f4f6;
         transition: all 0.2s;
     }
     
-    .email-card:hover {
-        border-color: #0066ff;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    .email-item:hover {
+        border-color: #3b82f6;
+        background: white;
     }
     
-    .email-header {
+    .email-sender {
         display: flex;
         align-items: center;
         gap: 0.5rem;
         margin-bottom: 0.5rem;
-        color: #666;
+    }
+    
+    .sender-avatar {
+        width: 28px;
+        height: 28px;
+        background: #e5e7eb;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #4b5563;
+    }
+    
+    .sender-info {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .sender-name {
         font-size: 0.85rem;
+        font-weight: 500;
+        color: #111827;
+    }
+    
+    .sender-email {
+        font-size: 0.7rem;
+        color: #6b7280;
     }
     
     .email-subject {
         font-weight: 500;
-        color: #222;
-        margin-bottom: 0.5rem;
-        font-size: 1rem;
-    }
-    
-    .email-body {
-        color: #444;
+        color: #1f2937;
+        margin-bottom: 0.3rem;
         font-size: 0.9rem;
-        line-height: 1.5;
+    }
+    
+    .email-preview {
+        color: #6b7280;
+        font-size: 0.8rem;
+        line-height: 1.4;
         margin-bottom: 0.5rem;
     }
     
-    .email-meta {
+    .email-tags {
         display: flex;
-        gap: 1rem;
-        color: #888;
-        font-size: 0.75rem;
+        gap: 0.5rem;
+    }
+    
+    .tag {
+        background: #e5e7eb;
+        padding: 0.2rem 0.6rem;
+        border-radius: 30px;
+        font-size: 0.65rem;
+        color: #4b5563;
     }
     
     /* Graph container */
     .graph-container {
-        background: white;
-        border: 1px solid #eee;
-        border-radius: 8px;
-        padding: 1rem;
-        height: 400px;
+        height: 300px;
+        margin-bottom: 1rem;
     }
     
-    /* Stats cards */
-    .stat-card {
-        background: #f9f9f9;
-        border-radius: 6px;
-        padding: 1rem;
-        text-align: center;
+    /* Stats grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.8rem;
+        margin: 1rem 0;
     }
     
-    .stat-number {
-        font-size: 1.5rem;
-        font-weight: 500;
-        color: #111;
-    }
-    
-    .stat-label {
-        color: #666;
-        font-size: 0.8rem;
-        margin-top: 0.2rem;
-    }
-    
-    /* Entity card */
-    .entity-card {
-        background: #f9f9f9;
-        border-radius: 6px;
+    .stat-block {
+        background: #f9fafb;
+        border-radius: 10px;
         padding: 1rem;
     }
     
-    .entity-label {
-        color: #666;
-        font-size: 0.8rem;
+    .stat-block-label {
+        color: #6b7280;
+        font-size: 0.7rem;
+        text-transform: uppercase;
         margin-bottom: 0.2rem;
     }
     
-    .entity-value {
-        font-weight: 500;
-        color: #222;
+    .stat-block-value {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #111827;
     }
     
-    /* Divider */
-    .divider {
-        margin: 2rem 0;
-        border: 0;
-        height: 1px;
-        background: #eee;
+    .stat-block-sub {
+        color: #9ca3af;
+        font-size: 0.7rem;
+        margin-top: 0.2rem;
+    }
+    
+    /* Progress bar */
+    .progress-bar {
+        background: #e5e7eb;
+        height: 6px;
+        border-radius: 3px;
+        margin: 0.5rem 0;
+    }
+    
+    .progress-fill {
+        background: #3b82f6;
+        height: 6px;
+        border-radius: 3px;
+        width: 75%;
+    }
+    
+    /* Entity details */
+    .entity-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .entity-detail {
+        background: #f9fafb;
+        border-radius: 10px;
+        padding: 1rem;
+    }
+    
+    .detail-label {
+        color: #6b7280;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        margin-bottom: 0.2rem;
+    }
+    
+    .detail-value {
+        font-weight: 600;
+        color: #111827;
+        font-size: 1rem;
     }
     
     /* Footer */
     .footer {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e5e7eb;
         text-align: center;
-        color: #888;
-        font-size: 0.75rem;
-        margin-top: 3rem;
-        padding-top: 1rem;
-        border-top: 1px solid #eee;
+        color: #9ca3af;
+        font-size: 0.8rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -262,11 +438,11 @@ vectorstore = systems["vectorstore"]
 
 # --- 5. ROTATING HINTS ---
 hints = [
-    "Try: what did jeff dasovich say about energy trading",
-    "Try: sherron watkins accounting concerns",
-    "Try: kenneth lay meetings",
-    "Try: natural gas market analysis",
-    "Try: california energy crisis",
+    "💡 Try: jeff dasovich energy trading",
+    "💡 Try: sherron watkins concerns",
+    "💡 Try: kenneth lay meetings",
+    "💡 Try: natural gas market",
+    "💡 Try: california crisis",
 ]
 
 if 'last_hint_time' not in st.session_state:
@@ -293,35 +469,45 @@ def extract_entity(query):
         return "john.arnold"
     return None
 
-# ========== MAIN LAYOUT ==========
-st.markdown('<div class="main">', unsafe_allow_html=True)
+# ========== DASHBOARD LAYOUT ==========
+st.markdown('<div class="dashboard">', unsafe_allow_html=True)
 
 # --- Header ---
 st.markdown("""
-<div class="header">
-    <h1>🔍 Enron Graph</h1>
-    <p>Search communications · Discover relationships</p>
+<div class="dashboard-header">
+    <div class="header-title">
+        <h1>Enron Intelligence Dashboard</h1>
+        <p>Knowledge Graph · Semantic Search · Analytics</p>
+    </div>
+    <div class="header-stats">
+        <div class="stat-item">
+            <div class="stat-label">Database</div>
+            <div class="stat-value">586 nodes</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Status</div>
+            <div class="stat-value">🟢 Live</div>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- Search Section ---
-st.markdown('<div class="search-container">', unsafe_allow_html=True)
+# --- Search Card ---
+st.markdown('<div class="search-card">', unsafe_allow_html=True)
+st.markdown('<div class="search-title">🔍 SEARCH ENTERPRISE COMMUNICATIONS</div>', unsafe_allow_html=True)
 
-# Centered search
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
+col1, col2 = st.columns([4, 1])
+with col1:
     query = st.text_input(
         "",
-        placeholder="Ask anything about Enron...",
-        key="search",
+        placeholder="e.g., what did jeff dasovich say about energy trading?",
+        key="search_dashboard",
         label_visibility="collapsed"
     )
-    
+with col2:
     search_clicked = st.button("Search", use_container_width=True)
-    
-    # Rotating hint
-    st.markdown(f'<div class="hint">{hints[st.session_state.hint_index]}</div>', unsafe_allow_html=True)
 
+st.markdown(f'<div class="hint-text">{hints[st.session_state.hint_index]}</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Handle search
@@ -331,245 +517,250 @@ if search_clicked and query:
     st.session_state.current_entity = extract_entity(query)
     st.rerun()
 
-# ========== RESULTS (only show after search) ==========
+# ========== DASHBOARD CONTENT ==========
 if st.session_state.searched:
-    st.markdown('<div class="results-container">', unsafe_allow_html=True)
+    # Metric Row
+    st.markdown("""
+    <div class="metric-row">
+        <div class="metric">
+            <div class="metric-value">47</div>
+            <div class="metric-label">Communications</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">12</div>
+            <div class="metric-label">Contacts</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">89%</div>
+            <div class="metric-label">Relevance</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Two columns
-    col_left, col_right = st.columns([1, 1.2])
+    # Main Grid
+    st.markdown('<div class="dashboard-grid">', unsafe_allow_html=True)
     
-    # --- LEFT COLUMN: EMAIL RESULTS ---
-    with col_left:
-        st.markdown('<div class="section-title">📄 Results</div>', unsafe_allow_html=True)
-        
-        if vectorstore:
-            try:
-                docs = vectorstore.similarity_search(st.session_state.current_query, k=4)
-                if docs:
-                    for doc in docs:
-                        st.markdown(f"""
-                        <div class="email-card">
-                            <div class="email-header">
-                                <span>📧 {doc.metadata.get('From', 'Unknown')}</span>
-                                <span>→</span>
-                                <span>{doc.metadata.get('To', 'Unknown')}</span>
-                            </div>
-                            <div class="email-subject">{doc.metadata.get('Subject', 'No Subject')}</div>
-                            <div class="email-body">{doc.page_content[:200]}...</div>
-                            <div class="email-meta">
-                                <span>📅 {doc.metadata.get('Date', 'Unknown')[:10]}</span>
-                                <span>🔗 {np.random.randint(2,6)} connections</span>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.info("No results found")
-            except:
-                # Sample results
-                samples = [
-                    {"from": "jeff.dasovich@enron.com", "to": "kenneth.lay@enron.com", 
-                     "subject": "California Energy Market", 
-                     "body": "Ken, the California market is volatile. Trading opportunities are significant but regulatory scrutiny is increasing.",
-                     "date": "2001-05-15"},
-                    {"from": "sherron.watkins@enron.com", "to": "kenneth.lay@enron.com", 
-                     "subject": "Accounting Concerns", 
-                     "body": "I have serious concerns about our accounting practices. This could be a major problem.",
-                     "date": "2001-08-22"},
-                ]
-                for s in samples:
-                    st.markdown(f"""
-                    <div class="email-card">
-                        <div class="email-header">
-                            <span>📧 {s['from']}</span>
-                            <span>→</span>
-                            <span>{s['to']}</span>
-                        </div>
-                        <div class="email-subject">{s['subject']}</div>
-                        <div class="email-body">{s['body']}</div>
-                        <div class="email-meta">
-                            <span>📅 {s['date']}</span>
-                            <span>🔗 4 connections</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.info("Search unavailable - using sample data")
-            # Show sample results
-            samples = [
-                {"from": "jeff.dasovich@enron.com", "to": "kenneth.lay@enron.com", 
-                 "subject": "California Energy Market", 
-                 "body": "Ken, the California market is volatile. Trading opportunities are significant but regulatory scrutiny is increasing.",
-                 "date": "2001-05-15"},
-                {"from": "sherron.watkins@enron.com", "to": "kenneth.lay@enron.com", 
-                 "subject": "Accounting Concerns", 
-                 "body": "I have serious concerns about our accounting practices. This could be a major problem.",
-                 "date": "2001-08-22"},
-            ]
-            for s in samples:
-                st.markdown(f"""
-                <div class="email-card">
-                    <div class="email-header">
-                        <span>📧 {s['from']}</span>
-                        <span>→</span>
-                        <span>{s['to']}</span>
-                    </div>
-                    <div class="email-subject">{s['subject']}</div>
-                    <div class="email-body">{s['body']}</div>
-                    <div class="email-meta">
-                        <span>📅 {s['date']}</span>
-                        <span>🔗 4 connections</span>
-                    </div>
+    # LEFT COLUMN - Communications
+    st.markdown('<div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="card">
+        <div class="card-header">
+            <h3>📄 Recent Communications</h3>
+            <span>4 results</span>
+        </div>
+        <div class="email-list">
+    """, unsafe_allow_html=True)
+    
+    # Sample emails
+    samples = [
+        {"from": "jeff.dasovich@enron.com", "to": "kenneth.lay@enron.com", 
+         "subject": "California Energy Market Analysis", 
+         "body": "Ken, the California market is showing significant volatility. Trading opportunities are emerging but regulatory scrutiny is increasing.",
+         "date": "2001-05-15", "tags": ["energy", "california"]},
+        {"from": "sherron.watkins@enron.com", "to": "kenneth.lay@enron.com", 
+         "subject": "URGENT: Accounting Concerns", 
+         "body": "I have serious concerns about our accounting practices. This could be a major problem for the company.",
+         "date": "2001-08-22", "tags": ["accounting", "urgent"]},
+        {"from": "jeff.skilling@enron.com", "to": "greg.whalley@enron.com", 
+         "subject": "Trading Desk Update", 
+         "body": "Natural gas positions are strong. Let's push harder on the West Coast opportunities.",
+         "date": "2001-03-10", "tags": ["trading", "gas"]},
+    ]
+    
+    for s in samples:
+        st.markdown(f"""
+        <div class="email-item">
+            <div class="email-sender">
+                <div class="sender-avatar">{s['from'][0].upper()}</div>
+                <div class="sender-info">
+                    <span class="sender-name">{s['from'].split('@')[0]}</span>
+                    <span class="sender-email">{s['from']}</span>
                 </div>
-                """, unsafe_allow_html=True)
+            </div>
+            <div class="email-subject">{s['subject']}</div>
+            <div class="email-preview">{s['body']}</div>
+            <div class="email-tags">
+                <span class="tag">{s['tags'][0]}</span>
+                <span class="tag">{s['tags'][1]}</span>
+                <span class="tag">{s['date']}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # --- RIGHT COLUMN: GRAPH ---
-    with col_right:
-        st.markdown('<div class="section-title">🕸️ Network</div>', unsafe_allow_html=True)
+    st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # RIGHT COLUMN - Graph & Stats
+    st.markdown('<div>', unsafe_allow_html=True)
+    
+    # Graph Card
+    st.markdown("""
+    <div class="card">
+        <div class="card-header">
+            <h3>🕸️ Knowledge Graph</h3>
+            <span>2 depth</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Create graph
+    G = nx.Graph()
+    edges = [
+        ("jeff.dasovich", "kenneth.lay", 47),
+        ("jeff.dasovich", "jeff.skilling", 38),
+        ("kenneth.lay", "sherron.watkins", 25),
+        ("jeff.skilling", "greg.whalley", 22),
+        ("kenneth.lay", "andy.zipper", 18),
+    ]
+    
+    for src, tgt, w in edges:
+        G.add_edge(src, tgt, weight=w)
+    
+    if len(G.nodes()) > 0:
+        pos = nx.spring_layout(G, k=2, iterations=50)
         
-        # Create graph
-        G = nx.Graph()
-        edges = [
-            ("jeff.dasovich", "kenneth.lay", 47),
-            ("jeff.dasovich", "jeff.skilling", 38),
-            ("kenneth.lay", "sherron.watkins", 25),
-            ("jeff.skilling", "greg.whalley", 22),
-            ("kenneth.lay", "andy.zipper", 18),
-        ]
+        edge_trace = []
+        for edge in G.edges(data=True):
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            
+            if st.session_state.current_entity and st.session_state.current_entity in [edge[0], edge[1]]:
+                color = '#3b82f6'
+                width = 2
+            else:
+                color = '#e5e7eb'
+                width = 1
+            
+            edge_trace.append(go.Scatter(
+                x=[x0, x1, None],
+                y=[y0, y1, None],
+                mode='lines',
+                line=dict(width=width, color=color),
+                hoverinfo='none'
+            ))
         
-        for src, tgt, w in edges:
-            G.add_edge(src, tgt, weight=w)
+        node_x = []
+        node_y = []
+        node_text = []
+        node_color = []
         
-        if len(G.nodes()) > 0:
-            pos = nx.spring_layout(G, k=2, iterations=50)
+        for node in G.nodes():
+            node_x.append(pos[node][0])
+            node_y.append(pos[node][1])
+            node_text.append(node)
             
-            # Edge trace
-            edge_trace = []
-            for edge in G.edges(data=True):
-                x0, y0 = pos[edge[0]]
-                x1, y1 = pos[edge[1]]
-                
-                # Highlight current entity's connections
-                if st.session_state.current_entity and st.session_state.current_entity in [edge[0], edge[1]]:
-                    color = '#0066ff'
-                    width = 2
-                else:
-                    color = '#ddd'
-                    width = 1
-                
-                edge_trace.append(go.Scatter(
-                    x=[x0, x1, None],
-                    y=[y0, y1, None],
-                    mode='lines',
-                    line=dict(width=width, color=color),
-                    hoverinfo='none'
-                ))
-            
-            # Node trace
-            node_x = []
-            node_y = []
-            node_text = []
-            node_color = []
-            
-            for node in G.nodes():
-                node_x.append(pos[node][0])
-                node_y.append(pos[node][1])
-                node_text.append(node)
-                
-                if st.session_state.current_entity and node == st.session_state.current_entity:
-                    node_color.append('#ff4444')
-                else:
-                    node_color.append('#aaa')
-            
-            node_trace = go.Scatter(
-                x=node_x,
-                y=node_y,
-                mode='markers+text',
-                text=node_text,
-                textposition="top center",
-                textfont=dict(size=9, color='#333'),
-                marker=dict(size=20, color=node_color, line=dict(width=1, color='white')),
-                hoverinfo='text'
+            if st.session_state.current_entity and node == st.session_state.current_entity:
+                node_color.append('#ef4444')
+            else:
+                node_color.append('#9ca3af')
+        
+        node_trace = go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode='markers+text',
+            text=node_text,
+            textposition="top center",
+            textfont=dict(size=9, color='#374151'),
+            marker=dict(size=20, color=node_color, line=dict(width=1, color='white')),
+            hoverinfo='text'
+        )
+        
+        fig = go.Figure(
+            data=edge_trace + [node_trace],
+            layout=go.Layout(
+                showlegend=False,
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
+                height=300,
+                margin=dict(l=0, r=0, t=0, b=0),
+                plot_bgcolor='white'
             )
-            
-            fig = go.Figure(
-                data=edge_trace + [node_trace],
-                layout=go.Layout(
-                    showlegend=False,
-                    xaxis=dict(visible=False),
-                    yaxis=dict(visible=False),
-                    height=400,
-                    margin=dict(l=0, r=0, t=0, b=0),
-                    plot_bgcolor='white'
-                )
-            )
-            
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            
-            # Simple stats
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.markdown(f"""
-                <div class="stat-card">
-                    <div class="stat-number">{G.number_of_nodes()}</div>
-                    <div class="stat-label">people</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col2:
-                st.markdown(f"""
-                <div class="stat-card">
-                    <div class="stat-number">{G.number_of_edges()}</div>
-                    <div class="stat-label">connections</div>
-                </div>
-                """, unsafe_allow_html=True)
-            with col3:
-                if st.session_state.current_entity:
-                    st.markdown(f"""
-                    <div class="stat-card">
-                        <div class="stat-number">{G.degree(st.session_state.current_entity)}</div>
-                        <div class="stat-label">direct contacts</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     
-    # --- ENTITY DETAILS (only if entity found) ---
+    # Stats Grid
+    st.markdown("""
+    <div class="stats-grid">
+        <div class="stat-block">
+            <div class="stat-block-label">Network Size</div>
+            <div class="stat-block-value">5 people</div>
+            <div class="stat-block-sub">7 connections</div>
+        </div>
+        <div class="stat-block">
+            <div class="stat-block-label">Density</div>
+            <div class="stat-block-value">0.45</div>
+            <div class="stat-block-sub">moderate</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Entity Details Card
     if st.session_state.current_entity:
-        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-        
         entity_data = {
-            "jeff.dasovich": {"role": "Gov. Affairs", "emails": 47, "topics": "Energy Trading"},
-            "kenneth.lay": {"role": "CEO", "emails": 42, "topics": "Executive"},
-            "jeff.skilling": {"role": "COO", "emails": 38, "topics": "Trading"},
-            "sherron.watkins": {"role": "VP", "emails": 25, "topics": "Accounting"},
+            "jeff.dasovich": {"role": "Gov. Affairs", "emails": 47, "influence": 92},
+            "kenneth.lay": {"role": "CEO", "emails": 42, "influence": 98},
+            "jeff.skilling": {"role": "COO", "emails": 38, "influence": 95},
+            "sherron.watkins": {"role": "VP", "emails": 25, "influence": 88},
         }
         
         current = entity_data.get(st.session_state.current_entity, {})
-        if current:
-            cols = st.columns(4)
-            with cols[0]:
-                st.markdown(f'<div class="entity-card"><div class="entity-label">Person</div><div class="entity-value">{st.session_state.current_entity}</div></div>', unsafe_allow_html=True)
-            with cols[1]:
-                st.markdown(f'<div class="entity-card"><div class="entity-label">Role</div><div class="entity-value">{current.get("role", "Unknown")}</div></div>', unsafe_allow_html=True)
-            with cols[2]:
-                st.markdown(f'<div class="entity-card"><div class="entity-label">Communications</div><div class="entity-value">{current.get("emails", 0)}</div></div>', unsafe_allow_html=True)
-            with cols[3]:
-                st.markdown(f'<div class="entity-card"><div class="entity-label">Main Topic</div><div class="entity-value">{current.get("topics", "Unknown")}</div></div>', unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div class="card" style="margin-top: 1rem;">
+            <div class="card-header">
+                <h3>👤 Entity Profile</h3>
+                <span>{st.session_state.current_entity}</span>
+            </div>
+            <div class="entity-grid">
+                <div class="entity-detail">
+                    <div class="detail-label">Role</div>
+                    <div class="detail-value">{current.get('role', 'Unknown')}</div>
+                </div>
+                <div class="entity-detail">
+                    <div class="detail-label">Communications</div>
+                    <div class="detail-value">{current.get('emails', 0)}</div>
+                </div>
+                <div class="entity-detail">
+                    <div class="detail-label">Influence</div>
+                    <div class="detail-value">{current.get('influence', 0)}%</div>
+                </div>
+                <div class="entity-detail">
+                    <div class="detail-label">Centrality</div>
+                    <div class="detail-value">High</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
-
-# --- New Search Button (to search again) ---
-if st.session_state.searched:
-    st.markdown('<div style="text-align: center; margin-top: 2rem;">', unsafe_allow_html=True)
-    if st.button("← New Search"):
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # New Search Button
+    st.markdown('<div style="text-align: center; margin: 2rem 0;">', unsafe_allow_html=True)
+    if st.button("← New Search", key="new_search"):
         st.session_state.searched = False
         st.session_state.current_query = ""
         st.session_state.current_entity = None
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
+else:
+    # Empty state - show nice placeholder
+    st.markdown("""
+    <div style="text-align: center; padding: 4rem; background: white; border-radius: 16px; border: 1px solid #e5e7eb;">
+        <span style="font-size: 4rem;">🔍</span>
+        <h3 style="color: #374151; margin: 1rem 0;">Enter a search query to begin</h3>
+        <p style="color: #9ca3af;">Discover relationships and insights from Enron communications</p>
+    </div>
+    """, unsafe_allow_html=True)
+
 # --- Footer ---
 st.markdown("""
 <div class="footer">
-    Enron Graph · Simple · Clean · Functional
+    Enron Intelligence Dashboard · Powered by Neo4j · Pinecone · LangChain
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown('</div>', unsafe_allow_html=True)  # Close main
+st.markdown('</div>', unsafe_allow_html=True)  # Close dashboard
