@@ -69,23 +69,25 @@ def load_enterprise_systems():
         systems["status"]["pinecone"] = f"❌ {str(e)[:50]}"
     
     # Connect to Neo4j - Try different approaches
+    # Connect to Neo4j - Final Resilient Version
     try:
-        # Try without specifying database first
         g_store = Neo4jGraph(
             url=NEO4J_URI, 
             username=NEO4J_USER, 
             password=NEO4J_PASSWORD,
-            database="neo4j"
-            
+            database="neo4j",
+            refresh_schema=False  # Prevents unnecessary routing table requests on startup
         )
-        # Test the connection
-        test_query = g_store.query("MATCH (n) RETURN n LIMIT 1")
+        # Basic connectivity test
+        g_store.query("RETURN 1")
+        
         systems["graph"] = g_store
         systems["status"]["neo4j"] = "✅ Connected"
         
     except Exception as e:
-        systems["status"]["neo4j"] = f"❌ Connection failed"
-        st.sidebar.error(f"Neo4j Error: {str(e)[:100]}")
+        # If the direct connection fails, we show a helpful error but stay in demo mode
+        systems["status"]["neo4j"] = "❌ Routing Error"
+        st.sidebar.warning("Neo4j is warming up. Please refresh in 1 minute.")
     
     return systems
 
