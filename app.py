@@ -355,29 +355,28 @@ for i, q in enumerate(queries):
             st.rerun()
 
 # --- 8. ANALYTICS SECTION ---
+# --- 7. QUICK ACTIONS ---
 st.divider()
-st.header("📊 Enterprise Insights")
+st.subheader("🔍 Try These Sample Queries:")
 
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("Total Communications", "2,547", "+12.3%")
-with col2:
-    st.metric("Active Participants", "158", "+8")
-with col3:
-    st.metric("Avg. Response Time", "2.4h", "-15%")
-with col4:
-    st.metric("Key Topics", "24", "+3")
+cols = st.columns(4)
+queries = ["natural gas trading", "energy market analysis", "jeff dasovich", "accounting concerns"]
 
-st.subheader("🔍 Recent Intelligence Insights")
-insights = [
-    "• Increased communication between Houston and London offices regarding regulatory filings",
-    "• Jeff Dasovich identified as central hub in energy trading discussions",
-    "• Pattern detected: Weekend communications spike before major announcements",
-    "• Legal team communications isolated from trading desk operations"
-]
+# Create a text input for the query if it doesn't exist in session state
+if 'search_text' not in st.session_state:
+    st.session_state.search_text = ""
 
-for insight in insights:
-    st.info(insight)
+for i, q in enumerate(queries):
+    with cols[i]:
+        if st.button(f"📊 {q}", key=f"btn_{i}", use_container_width=True):
+            st.session_state.search_text = q
+            st.rerun()
+
+# Use the session state value for the text input
+query = st.text_input("Enter your query:", 
+                     value=st.session_state.search_text,
+                     placeholder="e.g., 'natural gas trading' or 'energy market analysis'",
+                     key="main_query_input")  # Different key to avoid conflict
 
 # --- 9. FOOTER ---
 st.divider()
