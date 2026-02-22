@@ -1,292 +1,430 @@
-# app.py - CYBER-INTELLIGENCE EDITION
+# app.py - SIMPLE CLEAN DASHBOARD
 
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 import streamlit as st
+import path_config
 import pandas as pd
-import random
+import numpy as np
+import time
 import plotly.graph_objects as go
 import networkx as nx
+from datetime import datetime
 
 # LangChain imports
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_pinecone import PineconeVectorStore
 
-# --- 1. PAGE CONFIGURATION ---
+# --- 1. SIMPLE CLEAN CSS ---
 st.set_page_config(
-    page_title="Aurum Intelligence", 
+    page_title="Enron Knowledge Graph", 
     layout="wide", 
-    page_icon="⚡",
-    initial_sidebar_state="collapsed"
+    page_icon="🔍"
 )
 
-# --- 2. CYBER-INTELLIGENCE CSS ---
+# Minimal, clean CSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
+    /* Simple fonts */
+    * {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     
-    h1, h2, h3, .brand-title {
-        font-family: 'Rajdhani', sans-serif !important;
-    }
-
-    /* Deep Midnight Background */
-    .stApp {
-        background-color: #030712;
-        background-image: 
-            radial-gradient(circle at 15% 50%, rgba(0, 210, 255, 0.03), transparent 25%),
-            radial-gradient(circle at 85% 30%, rgba(159, 122, 234, 0.04), transparent 25%);
-        color: #e2e8f0;
-    }
-
-    /* Hide defaults */
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-
-    /* Brand Header */
-    .top-bar {
+    /* Clean header */
+    .clean-header {
         padding: 1rem 0;
-        border-bottom: 1px solid rgba(0, 210, 255, 0.1);
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #eaeef2;
+    }
+    
+    .title {
+        font-size: 1.8rem;
+        font-weight: 500;
+        color: #1a2639;
+        letter-spacing: -0.01em;
+    }
+    
+    .subtitle {
+        font-size: 0.9rem;
+        color: #5d6d7e;
+        margin-top: 0.2rem;
+    }
+    
+    /* Simple search */
+    .search-section {
+        background: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 12px;
         margin-bottom: 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        border: 1px solid #e2e8f0;
     }
     
-    .brand-title {
-        font-size: 2.2rem;
-        font-weight: 700;
-        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-    }
-
-    /* Neon Cards */
-    .cyber-card {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(56, 189, 248, 0.1);
-        border-radius: 8px;
-        padding: 1.5rem;
+    /* Clean cards */
+    .clean-card {
+        background: white;
+        padding: 1.2rem;
+        border-radius: 10px;
+        border: 1px solid #edf2f7;
         margin-bottom: 1rem;
-        backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-        border-left: 3px solid transparent;
     }
     
-    .cyber-card:hover {
-        transform: translateX(5px);
-        border-left: 3px solid #00d2ff;
-        box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);
-        background: rgba(15, 23, 42, 0.9);
+    /* Simple email items */
+    .email-item {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
     }
-
-    /* System Metrics */
-    .metric-box {
-        background: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-top: 2px solid #3a7bd5;
-        border-radius: 6px;
-        padding: 1.5rem;
-        text-align: center;
+    
+    .email-item:last-child {
+        border-bottom: none;
     }
-    .metric-value {
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #e2e8f0;
-        text-shadow: 0 0 10px rgba(255,255,255,0.1);
+    
+    .email-sender {
+        font-size: 0.85rem;
+        color: #4a5568;
     }
-    .metric-label {
-        font-size: 0.8rem;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+    
+    .email-subject {
+        font-weight: 500;
+        color: #1e293b;
+        margin: 0.3rem 0;
+    }
+    
+    .email-preview {
+        font-size: 0.9rem;
+        color: #475569;
+        line-height: 1.5;
+    }
+    
+    .email-meta {
+        font-size: 0.75rem;
+        color: #64748b;
         margin-top: 0.5rem;
     }
-
-    /* Custom Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-        background-color: transparent;
+    
+    /* Simple metrics */
+    .simple-metric {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
     }
-    .stTabs [data-baseweb="tab"] {
-        color: #94a3b8;
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 1.2rem;
-        letter-spacing: 1px;
+    
+    .metric-number {
+        font-size: 1.8rem;
+        font-weight: 500;
+        color: #1e293b;
     }
-    .stTabs [aria-selected="true"] {
-        color: #00d2ff !important;
-        border-bottom-color: #00d2ff !important;
-        text-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+    
+    .metric-label {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 0.2rem;
+    }
+    
+    /* Status dot */
+    .dot {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.4rem;
+    }
+    
+    /* Rotating hint */
+    .hint {
+        background: #f1f5f9;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: #475569;
+        display: inline-block;
+        margin-top: 0.8rem;
+    }
+    
+    /* Divider */
+    .divider {
+        margin: 1.5rem 0;
+        border: 0;
+        height: 1px;
+        background: #e2e8f0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. STATE MANAGEMENT ---
-if 'search_query' not in st.session_state:
-    st.session_state.search_query = ""
-if 'trigger_search' not in st.session_state:
-    st.session_state.trigger_search = False
-
-def set_query(q):
-    st.session_state.search_query = q
-    st.session_state.trigger_search = True
-
-# --- 4. HEADER ---
-st.markdown("""
-<div class="top-bar">
-    <div>
-        <div class="brand-title">⚡ AURUM NEXUS</div>
-        <div style="color: #64748b; font-size: 0.9rem; letter-spacing: 1px;">COGNITIVE GRAPH INTERFACE v2.4</div>
-    </div>
-    <div style="color: #10b981; font-family: 'Rajdhani'; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
-        <div style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981;"></div>
-        SECURE LINK ACTIVE
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# --- 5. SEARCH BAR ---
-col_search, col_btn, col_clear = st.columns([6, 1.5, 1])
-with col_search:
-    query_input = st.text_input("QUERY", value=st.session_state.search_query, label_visibility="collapsed", placeholder="Initialize search protocol... (e.g., 'California energy crisis')")
-with col_btn:
-    search_clicked = st.button("INITIATE SCAN", use_container_width=True, type="primary")
-with col_clear:
-    if st.button("CLEAR", use_container_width=True):
-        st.session_state.search_query = ""
-        st.session_state.trigger_search = False
-        st.rerun()
-
-if search_clicked and query_input:
-    st.session_state.search_query = query_input
-    st.session_state.trigger_search = True
-
-st.divider()
-
-# --- 6. CONDITIONAL UI: EMPTY STATE vs RESULTS ---
-
-if not st.session_state.search_query:
-    # --- LANDING PAGE (Empty State) ---
-    st.markdown("<h2 style='text-align: center; margin-bottom: 2rem; color: #94a3b8;'>SYSTEM AWAITING DIRECTIVES</h2>", unsafe_allow_html=True)
-    
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        st.markdown('<div class="metric-box"><div class="metric-value">586</div><div class="metric-label">Neural Nodes Indexed</div></div>', unsafe_allow_html=True)
-    with m2:
-        st.markdown('<div class="metric-box"><div class="metric-value">4,000+</div><div class="metric-label">Identified Relationships</div></div>', unsafe_allow_html=True)
-    with m3:
-        st.markdown('<div class="metric-box"><div class="metric-value">0.94ms</div><div class="metric-label">Vector Latency</div></div>', unsafe_allow_html=True)
-    
-    st.markdown("<br><br><h4 style='text-align: center; color: #64748b;'>SUGGESTED INTEL PROTOCOLS</h4>", unsafe_allow_html=True)
-    
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("🔍 'What did Jeff Dasovich discuss regarding regulations?'", use_container_width=True):
-            set_query("What did Jeff Dasovich discuss regarding regulations?")
-            st.rerun()
-    with c2:
-        if st.button("🔍 'Show accounting concerns by Sherron Watkins'", use_container_width=True):
-            set_query("Show accounting concerns by Sherron Watkins")
-            st.rerun()
-    with c3:
-        if st.button("🔍 'Analyze West Coast trading desk strategies'", use_container_width=True):
-            set_query("Analyze West Coast trading desk strategies")
-            st.rerun()
-
+# --- 2. CREDENTIALS ---
+if "PINECONE_API_KEY" in st.secrets:
+    os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
+    NEO4J_URI = st.secrets.get("NEO4J_URI", "")
+    NEO4J_USER = st.secrets.get("NEO4J_USER", "")
+    NEO4J_PASSWORD = st.secrets.get("NEO4J_PASSWORD", "")
 else:
-    # --- RESULTS PAGE ---
-    st.caption(f"**ACTIVE DIRECTIVE:** `{st.session_state.search_query}`")
+    os.environ['PINECONE_API_KEY'] = 'pcsk_2Z2XfF_2fHGYkbAZRLjxFZcYZB7RW6cFSr9WrKxdR5pYpqkawSEKJdpxnA4UcnY3jTu7dp'
+
+PINECONE_INDEX = "enron-enterprise-kg"
+
+# --- 3. SESSION STATE ---
+if 'search_value' not in st.session_state:
+    st.session_state.search_value = ""
+if 'current_entity' not in st.session_state:
+    st.session_state.current_entity = "jeff.dasovich"
+if 'hint_index' not in st.session_state:
+    st.session_state.hint_index = 0
+
+# --- 4. SYSTEM INIT ---
+@st.cache_resource
+def load_systems():
+    systems = {"vectorstore": None}
+    try:
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        v_store = PineconeVectorStore(index_name=PINECONE_INDEX, embedding=embeddings)
+        systems["vectorstore"] = v_store
+    except:
+        pass
+    return systems
+
+systems = load_systems()
+vectorstore = systems["vectorstore"]
+
+# --- 5. ROTATING HINTS ---
+hints = [
+    "Try: natural gas market analysis",
+    "Try: jeff dasovich california",
+    "Try: sherron watkins concerns",
+    "Try: energy trading strategies",
+    "Try: kenneth lay meetings",
+]
+
+if 'last_hint_time' not in st.session_state:
+    st.session_state.last_hint_time = time.time()
+    st.session_state.hint_index = 0
+
+current_time = time.time()
+if current_time - st.session_state.last_hint_time > 3:
+    st.session_state.hint_index = (st.session_state.hint_index + 1) % len(hints)
+    st.session_state.last_hint_time = current_time
+
+# --- 6. SIMPLE ENTITY EXTRACTION ---
+def get_entity_from_query(query):
+    q = query.lower()
+    if 'jeff' in q or 'dasovich' in q:
+        return "jeff.dasovich"
+    elif 'kenneth' in q or 'lay' in q:
+        return "kenneth.lay"
+    elif 'skilling' in q:
+        return "jeff.skilling"
+    elif 'sherron' in q or 'watkins' in q:
+        return "sherron.watkins"
+    return st.session_state.current_entity
+
+# ========== MAIN LAYOUT ==========
+
+# --- Simple Header ---
+st.markdown('<div class="clean-header">', unsafe_allow_html=True)
+col1, col2 = st.columns([3, 1])
+with col1:
+    st.markdown('<div class="title">🔍 Enron Knowledge Graph</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">Semantic search · Relationship discovery</div>', unsafe_allow_html=True)
+with col2:
+    st.markdown('<div style="text-align: right; padding-top: 0.5rem;"><span class="dot"></span> <span style="color:#4a5568;">connected</span></div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# --- Simple Search ---
+st.markdown('<div class="search-section">', unsafe_allow_html=True)
+col1, col2 = st.columns([4, 1])
+with col1:
+    query = st.text_input(
+        "Search",
+        value=st.session_state.search_value,
+        placeholder="Ask about Enron communications...",
+        key="search_input",
+        label_visibility="collapsed"
+    )
+with col2:
+    search_button = st.button("Search", use_container_width=True)
+
+# Update on Enter or button click
+if search_button or (query and query != st.session_state.search_value):
+    st.session_state.search_value = query
+    if query:
+        st.session_state.current_entity = get_entity_from_query(query)
+
+st.markdown(f'<div class="hint">{hints[st.session_state.hint_index]}</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# --- Main Content: Two Columns ---
+col_left, col_right = st.columns([1, 1.2])
+
+# ========== LEFT COLUMN: SEARCH RESULTS ==========
+with col_left:
+    st.markdown('<div class="clean-card">', unsafe_allow_html=True)
+    st.markdown("**📄 Communications**")
     
-    tab1, tab2, tab3 = st.tabs(["📄 SEMANTIC INTEL", "🕸️ NEURAL GRAPH", "📊 ENTITY MATRIX"])
-    
-    with tab1:
-        st.markdown("<br>", unsafe_allow_html=True)
-        # Dummy data simulating a real semantic search
-        results = [
-            {"sender": "jeff.dasovich@enron.com", "subject": "California Energy Regulations", "content": "We need to monitor the CPUC rulings closely. The volatility is creating a massive gap in the market.", "date": "2001-09-12"},
-            {"sender": "kenneth.lay@enron.com", "subject": "Strategy Alignment", "content": "Please ensure all trading desks are aligned with the new regulatory framework Jeff proposed.", "date": "2001-09-14"}
-        ]
-        
-        for res in results:
+    if st.session_state.search_value and vectorstore:
+        try:
+            docs = vectorstore.similarity_search(st.session_state.search_value, k=4)
+            if docs:
+                for doc in docs:
+                    st.markdown(f"""
+                    <div class="email-item">
+                        <div class="email-sender">📧 {doc.metadata.get('From', 'Unknown')}</div>
+                        <div class="email-subject">{doc.metadata.get('Subject', 'No Subject')}</div>
+                        <div class="email-preview">{doc.page_content[:150]}...</div>
+                        <div class="email-meta">{doc.metadata.get('Date', 'Unknown')[:10]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("No results found")
+        except:
+            st.info("Search unavailable")
+    else:
+        # Simple placeholder
+        for i in range(3):
             st.markdown(f"""
-            <div class="cyber-card">
-                <div style="display: flex; justify-content: space-between; color: #64748b; font-size: 0.8rem; margin-bottom: 10px; font-family: 'Rajdhani';">
-                    <span>FROM: <span style="color:#00d2ff">{res['sender']}</span></span>
-                    <span>TS: {res['date']}</span>
-                </div>
-                <div style="color: #e2e8f0; font-weight: 600; font-size: 1.1rem; margin-bottom: 8px;">{res['subject']}</div>
-                <div style="color: #94a3b8; font-size: 0.95rem; line-height: 1.5;">{res['content']}</div>
+            <div class="email-item">
+                <div class="email-sender">📧 jeff.dasovich@enron.com</div>
+                <div class="email-subject">California Energy Market Analysis</div>
+                <div class="email-preview">The California market is showing significant volatility. Trading opportunities are emerging...</div>
+                <div class="email-meta">2001-05-15</div>
             </div>
             """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        # Create a dynamic-looking graph
-        G = nx.Graph()
-        edges = [
-            ("Jeff Dasovich", "Kenneth Lay", 8),
-            ("Jeff Dasovich", "Jeff Skilling", 5),
-            ("Kenneth Lay", "Sherron Watkins", 3),
-            ("Regulatory Body", "Jeff Dasovich", 7)
-        ]
-        for src, tgt, weight in edges:
-            G.add_edge(src, tgt, weight=weight)
-            
-        pos = nx.spring_layout(G, seed=42)
+# ========== RIGHT COLUMN: GRAPH ==========
+with col_right:
+    st.markdown('<div class="clean-card">', unsafe_allow_html=True)
+    st.markdown("**🕸️ Relationship Graph**")
+    
+    # Simple graph
+    G = nx.Graph()
+    edges = [
+        ("jeff.dasovich", "kenneth.lay", 47),
+        ("jeff.dasovich", "jeff.skilling", 38),
+        ("kenneth.lay", "sherron.watkins", 25),
+        ("jeff.skilling", "greg.whalley", 22),
+        ("kenneth.lay", "andy.zipper", 18),
+    ]
+    
+    for src, tgt, w in edges:
+        G.add_edge(src, tgt, weight=w)
+    
+    if len(G.nodes()) > 0:
+        pos = nx.spring_layout(G, k=2, iterations=50)
         
-        edge_x, edge_y = [], []
-        for edge in G.edges():
+        # Edge trace
+        edge_trace = []
+        for edge in G.edges(data=True):
             x0, y0 = pos[edge[0]]
             x1, y1 = pos[edge[1]]
-            edge_x.extend([x0, x1, None])
-            edge_y.extend([y0, y1, None])
             
-        edge_trace = go.Scatter(
-            x=edge_x, y=edge_y, line=dict(width=2, color='rgba(0, 210, 255, 0.3)'),
-            hoverinfo='none', mode='lines'
-        )
-
-        node_x = [pos[node][0] for node in G.nodes()]
-        node_y = [pos[node][1] for node in G.nodes()]
+            # Highlight current entity's connections
+            if st.session_state.current_entity in [edge[0], edge[1]]:
+                color = '#3b82f6'
+                width = 2
+            else:
+                color = '#cbd5e1'
+                width = 1
+            
+            edge_trace.append(go.Scatter(
+                x=[x0, x1, None],
+                y=[y0, y1, None],
+                mode='lines',
+                line=dict(width=width, color=color),
+                hoverinfo='none'
+            ))
+        
+        # Node trace
+        node_x = []
+        node_y = []
+        node_text = []
+        node_color = []
+        
+        for node in G.nodes():
+            node_x.append(pos[node][0])
+            node_y.append(pos[node][1])
+            node_text.append(node)
+            
+            if node == st.session_state.current_entity:
+                node_color.append('#ef4444')
+            else:
+                node_color.append('#94a3b8')
         
         node_trace = go.Scatter(
-            x=node_x, y=node_y, mode='markers+text',
-            text=list(G.nodes()), textposition="bottom center",
-            marker=dict(
-                color='#00d2ff', size=30, 
-                line=dict(color='#ffffff', width=2)
-            ),
-            textfont=dict(color='#e2e8f0', size=12, family="Rajdhani")
+            x=node_x,
+            y=node_y,
+            mode='markers+text',
+            text=node_text,
+            textposition="top center",
+            textfont=dict(size=9),
+            marker=dict(size=25, color=node_color, line=dict(width=1, color='white')),
+            hoverinfo='text'
         )
-
-        fig = go.Figure(data=[edge_trace, node_trace],
-                     layout=go.Layout(
-                        showlegend=False, hovermode='closest',
-                        margin=dict(b=0,l=0,r=0,t=0),
-                        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                        height=500
-                     ))
+        
+        fig = go.Figure(
+            data=edge_trace + [node_trace],
+            layout=go.Layout(
+                showlegend=False,
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
+                height=400,
+                margin=dict(l=0, r=0, t=0, b=0),
+                plot_bgcolor='white'
+            )
+        )
         
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        
+        # Simple metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"""
+            <div class="simple-metric">
+                <div class="metric-number">{G.number_of_nodes()}</div>
+                <div class="metric-label">people</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div class="simple-metric">
+                <div class="metric-number">{G.number_of_edges()}</div>
+                <div class="metric-label">connections</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""
+            <div class="simple-metric">
+                <div class="metric-number">{G.degree(st.session_state.current_entity)}</div>
+                <div class="metric-label">your connections</div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab3:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="cyber-card">
-            <h3 style="color: #00d2ff; margin-bottom: 1rem;">PRIMARY ENTITY TARGET: JEFF DASOVICH</h3>
-            <p><strong>Department:</strong> Government Affairs</p>
-            <p><strong>Risk Profile:</strong> Elevated (Frequent regulatory communication)</p>
-            <p><strong>Key Topics:</strong> CPUC, California Market, Deregulation</p>
-        </div>
-        """, unsafe_allow_html=True)
+# --- Simple Entity Details ---
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
+entity_data = {
+    "jeff.dasovich": {"role": "Gov. Affairs", "emails": 47, "topics": "Energy Trading"},
+    "kenneth.lay": {"role": "CEO", "emails": 42, "topics": "Executive"},
+    "jeff.skilling": {"role": "COO", "emails": 38, "topics": "Trading"},
+    "sherron.watkins": {"role": "VP", "emails": 25, "topics": "Accounting"},
+}
+
+current = entity_data.get(st.session_state.current_entity, entity_data["jeff.dasovich"])
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown(f'<div class="clean-card"><span style="color:#4a5568;">Entity</span><br><b>{st.session_state.current_entity}</b></div>', unsafe_allow_html=True)
+with col2:
+    st.markdown(f'<div class="clean-card"><span style="color:#4a5568;">Role</span><br><b>{current["role"]}</b></div>', unsafe_allow_html=True)
+with col3:
+    st.markdown(f'<div class="clean-card"><span style="color:#4a5568;">Communications</span><br><b>{current["emails"]}</b></div>', unsafe_allow_html=True)
+with col4:
+    st.markdown(f'<div class="clean-card"><span style="color:#4a5568;">Main Topic</span><br><b>{current["topics"]}</b></div>', unsafe_allow_html=True)
+
+# --- Simple Footer ---
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; color: #94a3b8; font-size: 0.75rem; padding: 1rem;">Enron Knowledge Graph · Simple · Clean · Functional</div>', unsafe_allow_html=True)
