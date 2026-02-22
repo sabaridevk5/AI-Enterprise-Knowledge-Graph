@@ -74,7 +74,9 @@ def load_enterprise_systems():
         g_store = Neo4jGraph(
             url=NEO4J_URI, 
             username=NEO4J_USER, 
-            password=NEO4J_PASSWORD
+            password=NEO4J_PASSWORD,
+            database="neo4j"
+            
         )
         # Test the connection
         test_query = g_store.query("MATCH (n) RETURN n LIMIT 1")
