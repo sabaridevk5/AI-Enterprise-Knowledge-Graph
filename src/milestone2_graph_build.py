@@ -1,11 +1,14 @@
-# milestone2_graph_build.py - FIXED with correct data path
-
+# milestone2_graph_build.py - SECURED & BLINDED
 import pandas as pd
 import path_config  # Auto-added for path configuration
 from neo4j import GraphDatabase
 import time
 import os
 import sys
+from dotenv import load_dotenv  # Added for security shielding
+
+# 1. Load the Shield (Environment Variables)
+load_dotenv()
 
 # Fix Windows encoding
 if sys.platform == 'win32':
@@ -23,7 +26,6 @@ class EnronGraphBuilder:
     def build_graph(self, csv_path):
         print(f"Reading data from {csv_path}...")
         
-        # Check if file exists
         if not os.path.exists(csv_path):
             print(f"ERROR: File not found at {csv_path}")
             return
@@ -50,26 +52,30 @@ class EnronGraphBuilder:
             print(f"Successfully built the Knowledge Graph in {round(end_time - start_time, 2)} seconds.")
 
 if __name__ == "__main__":
-    URI = "neo4j+s://0be473b6.databases.neo4j.io"
-    USER = "0be473b6" 
-    PASSWORD = "9m7fKj7WzZmVAMkithV9OkhzTzmBlPfQOye4Oyyvl70"
+    # 2. Load credentials securely from .env instead of hardcoding
+    URI = os.getenv("NEO4J_URI")
+    USER = os.getenv("NEO4J_USER")
+    PASSWORD = os.getenv("NEO4J_PASSWORD")
 
-    print(f"Attempting connection to Neo4j AuraDB Cloud at {URI}...")
-    
-    try:
-        builder = EnronGraphBuilder(URI, USER, PASSWORD)
-        builder.driver.verify_connectivity()
-        print("Authentication Successful!")
+    if not all([URI, USER, PASSWORD]):
+        print("❌ ERROR: Neo4j credentials missing in .env file.")
+    else:
+        print(f"Attempting secure connection to Neo4j AuraDB Cloud at {URI}...")
         
-        # Get the correct path - data is in parent directory
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        data_dir = os.path.join(os.path.dirname(script_dir), 'data')
-        csv_path = os.path.join(data_dir, 'processed_emails.csv')
-        
-        print(f"Looking for data at: {csv_path}")
-        builder.build_graph(csv_path)
-        builder.close()
-        print("\n--- MISSION COMPLETE ---")
-        
-    except Exception as e:
-        print(f"DATABASE ERROR: {e}")
+        try:
+            builder = EnronGraphBuilder(URI, USER, PASSWORD)
+            builder.driver.verify_connectivity()
+            print("Authentication Successful!")
+            
+            # Get the correct path
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            data_dir = os.path.join(os.path.dirname(script_dir), 'data')
+            csv_path = os.path.join(data_dir, 'processed_emails.csv')
+            
+            print(f"Looking for data at: {csv_path}")
+            builder.build_graph(csv_path)
+            builder.close()
+            print("\n--- MISSION COMPLETE ---")
+            
+        except Exception as e:
+            print(f"DATABASE ERROR: {e}")

@@ -1,8 +1,22 @@
-# Ignore all data files
+# Security
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Large Data (Fixes the GitHub 100MB error)
 data/
 *.csv
 *.json
 
-# Ignore system files
-__pycache__/
+# IDE Settings
+.vscode/
 .history/
+.idea/
