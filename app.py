@@ -1,4 +1,4 @@
-# app.py - CLEAN PROFESSIONAL VERSION
+# app.py - CLEAN PROFESSIONAL VERSION with smart entity detection
 
 import sys
 import os
@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import networkx as nx
 from datetime import datetime
+import re
 
 # LangChain imports
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -274,6 +275,38 @@ st.markdown("""
         color: #1f2937;
     }
     
+    /* Entity info */
+    .entity-info {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .entity-field {
+        min-width: 120px;
+    }
+    
+    .entity-label {
+        color: #6b7280;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        margin-bottom: 0.2rem;
+    }
+    
+    .entity-value {
+        font-weight: 500;
+        color: #1f2937;
+    }
+    
+    .no-entity {
+        color: #9ca3af;
+        font-style: italic;
+        padding: 0.5rem 0;
+    }
+    
     /* Footer */
     .footer {
         text-align: center;
@@ -306,7 +339,9 @@ if 'searched' not in st.session_state:
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 if 'current_entity' not in st.session_state:
-    st.session_state.current_entity = "jeff.dasovich"
+    st.session_state.current_entity = None  # Start with no entity
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = []
 
 # --- 4. SYSTEM INIT ---
 @st.cache_resource
@@ -331,6 +366,53 @@ def load_enterprise_systems():
 
 systems = load_enterprise_systems()
 vectorstore = systems["vectorstore"]
+
+# --- 5. ENTITY DETECTION FUNCTION ---
+def detect_entity_from_results(results):
+    """Detect the most relevant entity from search results"""
+    if not results:
+        return None
+    
+    # Count occurrences of known entities in the results
+    entity_keywords = {
+        "jeff.dasovich": ["jeff", "dasovich", "jeff dasovich"],
+        "kenneth.lay": ["kenneth", "lay", "kenneth lay", "ken lay"],
+        "jeff.skilling": ["jeff skilling", "skilling"],
+        "sherron.watkins": ["sherron", "watkins", "sherron watkins"],
+        "greg.whalley": ["greg", "whalley", "greg whalley"],
+        "andy.zipper": ["andy", "zipper", "andy zipper"],
+        "john.arnold": ["john", "arnold", "john arnold"]
+    }
+    
+    entity_scores = {entity: 0 for entity in entity_keywords}
+    
+    # Score each result
+    for result in results:
+        content = result.get('content', '').lower()
+        metadata = result.get('metadata', {})
+        sender = str(metadata.get('from', '')).lower()
+        subject = str(metadata.get('subject', '')).lower()
+        
+        # Check sender
+        for entity, keywords in entity_keywords.items():
+            for keyword in keywords:
+                if keyword in sender:
+                    entity_scores[entity] += 3  # Sender is strong evidence
+                    break
+        
+        # Check subject and content
+        text = f"{subject} {content}"
+        for entity, keywords in entity_keywords.items():
+            for keyword in keywords:
+                if keyword in text:
+                    entity_scores[entity] += 1
+                    break
+    
+    # Find the entity with highest score
+    if max(entity_scores.values()) > 0:
+        return max(entity_scores.items(), key=lambda x: x[1])[0]
+    
+    return None
 
 # ========== MAIN CONTAINER ==========
 st.markdown('<div class="main-container">', unsafe_allow_html=True)
@@ -359,27 +441,12 @@ col1, col2 = st.columns([5, 1])
 with col1:
     query = st.text_input(
         "",
-        placeholder="Search communications... e.g., 'jeff dasovich energy trading'",
+        placeholder="Search communications... e.g., 'what did sherron watkins say about accounting'",
         key="search_input",
         label_visibility="collapsed"
     )
 with col2:
     search = st.button("Search", use_container_width=True)
-
-if search and query:
-    st.session_state.searched = True
-    st.session_state.search_query = query
-    
-    # Simple entity extraction
-    q = query.lower()
-    if 'jeff' in q or 'dasovich' in q:
-        st.session_state.current_entity = "jeff.dasovich"
-    elif 'kenneth' in q or 'lay' in q:
-        st.session_state.current_entity = "kenneth.lay"
-    elif 'sherron' in q or 'watkins' in q:
-        st.session_state.current_entity = "sherron.watkins"
-    elif 'skilling' in q:
-        st.session_state.current_entity = "jeff.skilling"
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -410,6 +477,90 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ========== RESULTS SECTION (only after search) ==========
+if search and query:
+    st.session_state.searched = True
+    st.session_state.search_query = query
+    
+    # Get search results
+    results = []
+    if vectorstore:
+        try:
+            docs = vectorstore.similarity_search(query, k=5)
+            results = [
+                {
+                    'content': doc.page_content,
+                    'metadata': doc.metadata
+                }
+                for doc in docs
+            ]
+        except:
+            # Fallback sample results
+            results = [
+                {
+                    'content': "Ken, the California market is showing significant volatility. Trading opportunities are emerging...",
+                    'metadata': {'from': 'jeff.dasovich@enron.com', 'subject': 'California Energy Market', 'date': '2001-05-15'}
+                },
+                {
+                    'content': "I have serious concerns about our accounting practices. This could be a major problem...",
+                    'metadata': {'from': 'sherron.watkins@enron.com', 'subject': 'Accounting Concerns', 'date': '2001-08-22'}
+                },
+            ]
+    else:
+        # Sample results based on query
+        if 'watkins' in query.lower() or 'sherron' in query.lower():
+            results = [
+                {
+                    'content': "I have serious concerns about our accounting practices. This could be a major problem for the company.",
+                    'metadata': {'from': 'sherron.watkins@enron.com', 'subject': 'URGENT: Accounting Concerns', 'date': '2001-08-22'}
+                },
+                {
+                    'content': "Met with legal counsel to discuss the off-balance-sheet entities. The risk is significant.",
+                    'metadata': {'from': 'sherron.watkins@enron.com', 'subject': 'Legal Meeting', 'date': '2001-07-10'}
+                },
+            ]
+        elif 'lay' in query.lower() or 'kenneth' in query.lower():
+            results = [
+                {
+                    'content': "Quarterly results presentation prepared for the board. Numbers look strong.",
+                    'metadata': {'from': 'kenneth.lay@enron.com', 'subject': 'Board Meeting Agenda', 'date': '2001-04-05'}
+                },
+                {
+                    'content': "Need to prepare talking points for the investor call next week.",
+                    'metadata': {'from': 'kenneth.lay@enron.com', 'subject': 'Investor Relations', 'date': '2001-02-18'}
+                },
+            ]
+        elif 'skilling' in query.lower() or 'jeff' in query.lower():
+            results = [
+                {
+                    'content': "Natural gas positions are strong. Let's push harder on the West Coast opportunities.",
+                    'metadata': {'from': 'jeff.skilling@enron.com', 'subject': 'Trading Desk Update', 'date': '2001-03-10'}
+                },
+                {
+                    'content': "Quarterly operations review scheduled for next week. Please prepare updates.",
+                    'metadata': {'from': 'jeff.skilling@enron.com', 'subject': 'Operations Review', 'date': '2001-01-25'}
+                },
+            ]
+        else:
+            # Default results
+            results = [
+                {
+                    'content': "Ken, the California market is showing significant volatility. Trading opportunities are emerging...",
+                    'metadata': {'from': 'jeff.dasovich@enron.com', 'subject': 'California Energy Market', 'date': '2001-05-15'}
+                },
+                {
+                    'content': "I have serious concerns about our accounting practices. This could be a major problem...",
+                    'metadata': {'from': 'sherron.watkins@enron.com', 'subject': 'Accounting Concerns', 'date': '2001-08-22'}
+                },
+            ]
+    
+    st.session_state.search_results = results
+    
+    # Detect entity from search results
+    detected_entity = detect_entity_from_results(results)
+    st.session_state.current_entity = detected_entity
+    
+    st.rerun()
+
 if st.session_state.searched:
     st.markdown('<div class="two-column">', unsafe_allow_html=True)
     
@@ -419,62 +570,23 @@ if st.session_state.searched:
     st.markdown('<div class="card-header"><h3>📄 Search Results</h3></div>', unsafe_allow_html=True)
     st.markdown('<div class="card-body">', unsafe_allow_html=True)
     
-    if vectorstore:
-        try:
-            docs = vectorstore.similarity_search(st.session_state.search_query, k=3)
-            if docs:
-                for doc in docs:
-                    st.markdown(f"""
-                    <div class="email-item">
-                        <div class="email-from">📧 {doc.metadata.get('From', 'Unknown')}</div>
-                        <div class="email-subject">{doc.metadata.get('Subject', 'No Subject')}</div>
-                        <div class="email-preview">{doc.page_content[:150]}...</div>
-                        <div class="email-meta">
-                            <span>📅 {doc.metadata.get('Date', 'Unknown')[:10]}</span>
-                            <span>📊 {np.random.randint(85, 99)}% match</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No results found")
-        except:
-            # Sample results
-            samples = [
-                {"from": "jeff.dasovich@enron.com", "subject": "California Energy Market", 
-                 "content": "Ken, the California market is showing significant volatility. Trading opportunities are emerging...",
-                 "date": "2001-05-15"},
-                {"from": "sherron.watkins@enron.com", "subject": "Accounting Concerns", 
-                 "content": "I have serious concerns about our accounting practices. This could be a major problem...",
-                 "date": "2001-08-22"},
-            ]
-            for s in samples:
-                st.markdown(f"""
-                <div class="email-item">
-                    <div class="email-from">📧 {s['from']}</div>
-                    <div class="email-subject">{s['subject']}</div>
-                    <div class="email-preview">{s['content']}</div>
-                    <div class="email-meta">📅 {s['date']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-    else:
-        # Sample results
-        samples = [
-            {"from": "jeff.dasovich@enron.com", "subject": "California Energy Market", 
-             "content": "Ken, the California market is showing significant volatility. Trading opportunities are emerging...",
-             "date": "2001-05-15"},
-            {"from": "sherron.watkins@enron.com", "subject": "Accounting Concerns", 
-             "content": "I have serious concerns about our accounting practices. This could be a major problem...",
-             "date": "2001-08-22"},
-        ]
-        for s in samples:
+    if st.session_state.search_results:
+        for result in st.session_state.search_results:
+            metadata = result.get('metadata', {})
+            content = result.get('content', '')
             st.markdown(f"""
             <div class="email-item">
-                <div class="email-from">📧 {s['from']}</div>
-                <div class="email-subject">{s['subject']}</div>
-                <div class="email-preview">{s['content']}</div>
-                <div class="email-meta">📅 {s['date']}</div>
+                <div class="email-from">📧 {metadata.get('from', 'Unknown')}</div>
+                <div class="email-subject">{metadata.get('subject', 'No Subject')}</div>
+                <div class="email-preview">{content[:150]}...</div>
+                <div class="email-meta">
+                    <span>📅 {metadata.get('date', 'Unknown')[:10]}</span>
+                    <span>📊 {np.random.randint(85, 99)}% match</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
+    else:
+        st.info("No results found")
     
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -494,6 +606,8 @@ if st.session_state.searched:
         ("jeff.skilling", "greg.whalley", 22),
         ("kenneth.lay", "andy.zipper", 18),
         ("sherron.watkins", "mark.haedicke", 15),
+        ("jeff.dasovich", "john.arnold", 12),
+        ("john.arnold", "jeff.skilling", 10),
     ]
     
     for src, tgt, w in edges:
@@ -507,8 +621,14 @@ if st.session_state.searched:
         for edge in G.edges():
             x0, y0 = pos[edge[0]]
             x1, y1 = pos[edge[1]]
-            color = '#3b82f6' if st.session_state.current_entity in [edge[0], edge[1]] else '#e5e7eb'
-            width = 2 if st.session_state.current_entity in [edge[0], edge[1]] else 1
+            
+            # Highlight edges connected to current entity
+            if st.session_state.current_entity and st.session_state.current_entity in [edge[0], edge[1]]:
+                color = '#3b82f6'
+                width = 2
+            else:
+                color = '#e5e7eb'
+                width = 1
             
             edge_trace.append(go.Scatter(
                 x=[x0, x1, None], y=[y0, y1, None],
@@ -523,11 +643,11 @@ if st.session_state.searched:
             node_y.append(pos[node][1])
             node_text.append(node)
             
-            if node == st.session_state.current_entity:
-                node_color.append('#ef4444')
+            if st.session_state.current_entity and node == st.session_state.current_entity:
+                node_color.append('#ef4444')  # Red for detected entity
                 node_size.append(35)
             else:
-                node_color.append('#9ca3af')
+                node_color.append('#9ca3af')  # Gray for others
                 node_size.append(25)
         
         node_trace = go.Scatter(
@@ -552,24 +672,43 @@ if st.session_state.searched:
         
         # Entity info
         entity_data = {
-            "jeff.dasovich": {"role": "Gov. Affairs", "emails": 47, "contacts": 12},
-            "kenneth.lay": {"role": "CEO", "emails": 42, "contacts": 15},
-            "jeff.skilling": {"role": "COO", "emails": 38, "contacts": 10},
-            "sherron.watkins": {"role": "VP", "emails": 25, "contacts": 6},
+            "jeff.dasovich": {"role": "Gov. Affairs", "emails": 47, "contacts": 12, "topics": "Energy Trading"},
+            "kenneth.lay": {"role": "CEO", "emails": 42, "contacts": 15, "topics": "Executive"},
+            "jeff.skilling": {"role": "COO", "emails": 38, "contacts": 10, "topics": "Trading"},
+            "sherron.watkins": {"role": "VP", "emails": 25, "contacts": 6, "topics": "Accounting"},
+            "greg.whalley": {"role": "President", "emails": 22, "contacts": 8, "topics": "Trading"},
+            "andy.zipper": {"role": "CEO Europe", "emails": 18, "contacts": 7, "topics": "Operations"},
+            "john.arnold": {"role": "Trader", "emails": 12, "contacts": 4, "topics": "Natural Gas"},
         }
         
-        info = entity_data.get(st.session_state.current_entity, entity_data["jeff.dasovich"])
-        
-        st.markdown(f"""
-        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
-            <div style="display: flex; gap: 2rem;">
-                <div><span style="color: #6b7280; font-size:0.7rem;">Entity</span><br><span style="font-weight:500;">{st.session_state.current_entity}</span></div>
-                <div><span style="color: #6b7280; font-size:0.7rem;">Role</span><br><span style="font-weight:500;">{info['role']}</span></div>
-                <div><span style="color: #6b7280; font-size:0.7rem;">Emails</span><br><span style="font-weight:500;">{info['emails']}</span></div>
-                <div><span style="color: #6b7280; font-size:0.7rem;">Contacts</span><br><span style="font-weight:500;">{info['contacts']}</span></div>
+        if st.session_state.current_entity:
+            info = entity_data.get(st.session_state.current_entity, {})
+            st.markdown(f"""
+            <div class="entity-info">
+                <div class="entity-field">
+                    <div class="entity-label">Entity</div>
+                    <div class="entity-value">{st.session_state.current_entity}</div>
+                </div>
+                <div class="entity-field">
+                    <div class="entity-label">Role</div>
+                    <div class="entity-value">{info.get('role', 'Unknown')}</div>
+                </div>
+                <div class="entity-field">
+                    <div class="entity-label">Emails</div>
+                    <div class="entity-value">{info.get('emails', 0)}</div>
+                </div>
+                <div class="entity-field">
+                    <div class="entity-label">Topics</div>
+                    <div class="entity-value">{info.get('topics', 'General')}</div>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="entity-info">
+                <div class="no-entity">No specific person detected - showing full network</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -580,6 +719,8 @@ if st.session_state.searched:
     if st.button("← New Search"):
         st.session_state.searched = False
         st.session_state.search_query = ""
+        st.session_state.current_entity = None
+        st.session_state.search_results = []
         st.rerun()
 
 else:
