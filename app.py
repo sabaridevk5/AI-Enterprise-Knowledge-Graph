@@ -1,4 +1,4 @@
-# app.py - COMPLETE FIXED VERSION with no session state errors
+# app.py - COMPLETE WORKING VERSION
 
 import sys
 import os
@@ -39,8 +39,8 @@ else:
 PINECONE_INDEX = "enron-enterprise-kg"
 
 # --- 3. INITIALIZE SESSION STATE ---
-if 'search_query' not in st.session_state:
-    st.session_state.search_query = ""
+if 'search_value' not in st.session_state:
+    st.session_state.search_value = ""
 
 # --- 4. SYSTEM INITIALIZATION WITH ERROR HANDLING ---
 vectorstore = None
@@ -228,9 +228,9 @@ with st.sidebar:
 st.header("🔍 Enterprise Intelligence Search")
 st.caption("Ask questions about enterprise communications")
 
-# Search input with session state
+# Text input that reads from and writes to session state
 query = st.text_input("Enter your query:", 
-                     value=st.session_state.search_query,
+                     value=st.session_state.search_value,
                      placeholder="e.g., 'natural gas trading' or 'energy market analysis'",
                      key="search_input")
 
@@ -249,11 +249,14 @@ queries = ["natural gas trading", "energy market analysis", "jeff dasovich", "ac
 for i, q in enumerate(queries):
     with cols[i]:
         if st.button(f"📊 {q}", key=f"btn_{i}", use_container_width=True):
-            st.session_state.search_query = q
+            st.session_state.search_value = q
             st.rerun()
 
 # --- 9. SEARCH RESULTS ---
-if query:
+# Use either the text input or session state value
+search_term = query or st.session_state.search_value
+
+if search_term:
     if search_type == "Semantic + Graph":
         col1, col2 = st.columns([1, 1])
     elif search_type == "Semantic Only":
@@ -268,7 +271,7 @@ if query:
         with col1:
             st.subheader("📄 Semantic Matches")
             with st.spinner("Searching..."):
-                show_semantic_results(query)
+                show_semantic_results(search_term)
     
     # Graph Results
     if search_type != "Semantic Only" and col2 is not None:
