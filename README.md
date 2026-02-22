@@ -25,16 +25,7 @@ AI Knowledge Graph Builder is a **production-grade enterprise platform** that au
 
 Built using the Enron Email Corpus as a foundational dataset, this system demonstrates how combining **semantic vector search** with **graph neural discovery** can uncover hidden organizational risks, trace communication velocity, and map executive influence in real-time.
 
-### Key Business Outcomes
 
-| Metric | Impact |
-|--------|--------|
-| **Investigation Time** | ↓ 73% reduction in manual discovery |
-| **Risk Detection** | ↑ 94% accuracy in pattern recognition |
-| **Information Flow** | Real-time visibility into communication channels |
-| **Compliance Coverage** | 100% audit trail of all queries |
-
----
 
 ## 🏗️ System Architecture
 
