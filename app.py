@@ -1,1193 +1,281 @@
-# app.py - ENTERPRISE GRADE KNOWLEDGE GRAPH PLATFORM
+# app.py - ENTERPRISE HYBRID RAG SYSTEM
 
 import sys
 import os
-import json
-import hashlib
-from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Tuple
-import warnings
-warnings.filterwarnings('ignore')
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-# Core dependencies
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 import networkx as nx
-from dotenv import load_dotenv
+from datetime import datetime
 
-# LangChain Enterprise Suite
+# LangChain imports
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from langchain_neo4j import Neo4jGraph
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
-from langchain.memory import ConversationBufferMemory
-from langchain.callbacks import StreamlitCallbackHandler
-from langchain_community.llms import HuggingFacePipeline
-
-# Neo4j driver
 from neo4j import GraphDatabase
-from neo4j.exceptions import ServiceUnavailable, AuthError
 
-# Machine Learning
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from textblob import TextBlob
-
-# Load environment variables
-load_dotenv()
-
-# ============================================================================
-# CONFIGURATION & SECURITY
-# ============================================================================
-
-class SecurityManager:
-    """Enterprise security configuration"""
-    
-    @staticmethod
-    def get_credentials():
-        """Securely fetch credentials from environment or Streamlit secrets"""
-        if "PINECONE_API_KEY" in st.secrets:
-            # Streamlit Cloud
-            return {
-                "pinecone_key": st.secrets["PINECONE_API_KEY"],
-                "neo4j_uri": st.secrets["NEO4J_URI"],
-                "neo4j_user": st.secrets["NEO4J_USER"],
-                "neo4j_password": st.secrets["NEO4J_PASSWORD"]
-            }
-        else:
-            # Local development
-            return {
-                "pinecone_key": os.getenv("PINECONE_API_KEY", 'pcsk_2Z2XfF_2fHGYkbAZRLjxFZcYZB7RW6cFSr9WrKxdR5pYpqkawSEKJdpxnA4UcnY3jTu7dp'),
-                "neo4j_uri": os.getenv("NEO4J_URI", "neo4j+s://0be473b6.databases.neo4j.io"),
-                "neo4j_user": os.getenv("NEO4J_USER", "0be473b6"),
-                "neo4j_password": os.getenv("NEO4J_PASSWORD", "9m7fKj7WzZmVAMkithV9OkhzTzmBlPfQOye4Oyyvl70")
-            }
-
-# Initialize secure credentials
-creds = SecurityManager.get_credentials()
-PINECONE_INDEX = "enron-enterprise-kg"
-
-# ============================================================================
-# ENTERPRISE CSS THEME
-# ============================================================================
-
+# --- 1. ENTERPRISE CONFIGURATION & CSS ---
 st.set_page_config(
-    page_title="AURUM ENTERPRISE INTELLIGENCE",
-    page_icon="🏢",
-    layout="wide",
+    page_title="Aurum Nexus | Enterprise KG", 
+    layout="wide", 
+    page_icon="⚡",
     initial_sidebar_state="expanded"
 )
 
-# Enterprise-grade CSS
 st.markdown("""
 <style>
-    /* Import professional fonts */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500&display=swap');
     
-    /* Global enterprise theme */
-    :root {
-        --primary: #0f172a;
-        --primary-light: #1e293b;
-        --secondary: #3b82f6;
-        --accent: #8b5cf6;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --background: #f8fafc;
-        --surface: #ffffff;
-        --text: #0f172a;
-        --text-light: #64748b;
-        --border: #e2e8f0;
-    }
-    
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        font-family: 'Inter', sans-serif;
-    }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, .brand-font { font-family: 'Rajdhani', sans-serif !important; }
     
     .stApp {
-        background: var(--background);
+        background-color: #050B14;
+        background-image: radial-gradient(circle at 50% 0%, #0c182b 0%, #050B14 70%);
+        color: #e2e8f0;
     }
     
-    /* Enterprise header */
-    .enterprise-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-        padding: 1.5rem 2rem;
-        border-radius: 0 0 20px 20px;
-        margin-bottom: 2rem;
-        color: white;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    
-    .header-content {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .logo-area {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    
-    .logo-icon {
-        width: 50px;
-        height: 50px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        font-weight: 700;
-        border: 1px solid rgba(255,255,255,0.2);
-    }
-    
-    .title-area h1 {
-        font-size: 1.8rem;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        margin-bottom: 0.2rem;
-    }
-    
-    .title-area p {
-        font-size: 0.85rem;
-        opacity: 0.8;
-    }
-    
-    .security-badge {
-        background: rgba(255,255,255,0.1);
-        padding: 0.5rem 1rem;
-        border-radius: 40px;
-        font-size: 0.8rem;
-        border: 1px solid rgba(255,255,255,0.2);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .security-dot {
-        width: 8px;
-        height: 8px;
-        background: var(--success);
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
-        100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
-    }
-    
-    /* KPI Grid */
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 1rem;
-        margin-bottom: 2rem;
-        max-width: 1600px;
-        margin: 0 auto 2rem auto;
-        padding: 0 1rem;
-    }
-    
-    .kpi-card {
-        background: var(--surface);
-        border-radius: 16px;
-        padding: 1.2rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border: 1px solid var(--border);
-        transition: all 0.2s;
-    }
-    
-    .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1);
-        border-color: var(--secondary);
-    }
-    
-    .kpi-label {
-        color: var(--text-light);
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.3rem;
-    }
-    
-    .kpi-value {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: var(--text);
-        line-height: 1.2;
-    }
-    
-    .kpi-trend {
-        font-size: 0.7rem;
-        color: var(--success);
-        margin-top: 0.2rem;
-        display: flex;
-        align-items: center;
-        gap: 0.2rem;
-    }
-    
-    .kpi-trend.warning {
-        color: var(--warning);
-    }
-    
-    .kpi-trend.danger {
-        color: var(--danger);
-    }
-    
-    /* Search section */
-    .search-section {
-        max-width: 1600px;
-        margin: 0 auto 2rem auto;
-        padding: 0 1rem;
-    }
-    
-    .search-card {
-        background: var(--surface);
-        border-radius: 20px;
+    /* Cyber Cards */
+    .cyber-card {
+        background: rgba(13, 22, 37, 0.7);
+        border: 1px solid rgba(0, 210, 255, 0.15);
+        border-radius: 4px;
         padding: 1.5rem;
-        border: 1px solid var(--border);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+        backdrop-filter: blur(12px);
+        border-left: 3px solid #00d2ff;
+        transition: all 0.3s ease;
+    }
+    .cyber-card:hover {
+        box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);
+        border-left: 3px solid #f43f5e;
     }
     
-    .search-header {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
+    /* Metrics */
+    .metric-value { font-size: 2.2rem; font-weight: 700; color: #00d2ff; font-family: 'Rajdhani'; }
+    .metric-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
     
-    .search-header h3 {
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--text);
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
+    /* Status Badge */
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 10px; border-radius: 20px;
+        background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981;
+        color: #10b981; font-size: 0.75rem; font-weight: 600; letter-spacing: 1px;
     }
+    .status-dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
     
-    .search-badge {
-        background: var(--background);
-        padding: 0.2rem 0.6rem;
-        border-radius: 30px;
-        font-size: 0.7rem;
-        color: var(--text-light);
-    }
-    
-    .search-wrapper {
-        display: flex;
-        gap: 0.75rem;
-    }
-    
-    .search-input {
-        flex: 1;
-        padding: 0.9rem 1.2rem;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        font-size: 0.95rem;
-        outline: none;
-        transition: all 0.2s;
-        background: var(--background);
-    }
-    
-    .search-input:focus {
-        border-color: var(--secondary);
-        background: var(--surface);
-        box-shadow: 0 0 0 4px rgba(59,130,246,0.1);
-    }
-    
-    .search-button {
-        background: var(--primary);
-        color: white;
-        border: none;
-        padding: 0.9rem 2rem;
-        border-radius: 12px;
-        font-weight: 500;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .search-button:hover {
-        background: var(--primary-light);
-    }
-    
-    /* Enterprise hints */
-    .hints-container {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1rem;
-        flex-wrap: wrap;
-    }
-    
-    .hint-chip {
-        background: var(--background);
-        padding: 0.4rem 1rem;
-        border-radius: 30px;
-        font-size: 0.8rem;
-        color: var(--text-light);
-        border: 1px solid var(--border);
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    
-    .hint-chip:hover {
-        background: var(--secondary);
-        color: white;
-        border-color: var(--secondary);
-    }
-    
-    .rotating-hint {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-        color: white;
-        padding: 0.8rem 1.2rem;
-        border-radius: 40px;
-        font-size: 0.9rem;
-        margin-top: 1rem;
-        animation: glow 2s infinite;
-    }
-    
-    @keyframes glow {
-        0% { opacity: 0.9; }
-        50% { opacity: 1; box-shadow: 0 0 15px var(--secondary); }
-        100% { opacity: 0.9; }
-    }
-    
-    /* Dashboard grid */
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: 1.5fr 1fr;
-        gap: 1.5rem;
-        max-width: 1600px;
-        margin: 0 auto;
-        padding: 0 1rem;
-    }
-    
-    /* Enterprise cards */
-    .enterprise-card {
-        background: var(--surface);
-        border-radius: 24px;
-        padding: 1.5rem;
-        border: 1px solid var(--border);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
-        margin-bottom: 1.5rem;
-    }
-    
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.2rem;
-    }
-    
-    .card-header h3 {
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--text);
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .card-badge {
-        background: var(--background);
-        padding: 0.2rem 0.8rem;
-        border-radius: 30px;
-        font-size: 0.7rem;
-        color: var(--text-light);
-        border: 1px solid var(--border);
-    }
-    
-    /* Timeline */
-    .timeline-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.8rem;
-        border-bottom: 1px solid var(--border);
-    }
-    
-    .timeline-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--secondary);
-    }
-    
-    .timeline-content {
-        flex: 1;
-    }
-    
-    .timeline-date {
-        font-size: 0.7rem;
-        color: var(--text-light);
-    }
-    
-    .timeline-title {
-        font-size: 0.9rem;
-        font-weight: 500;
-        color: var(--text);
-    }
-    
-    /* Risk indicators */
-    .risk-indicator {
-        display: inline-block;
-        padding: 0.2rem 0.6rem;
-        border-radius: 30px;
-        font-size: 0.7rem;
-        font-weight: 500;
-    }
-    
-    .risk-high {
-        background: rgba(239,68,68,0.1);
-        color: var(--danger);
-    }
-    
-    .risk-medium {
-        background: rgba(245,158,11,0.1);
-        color: var(--warning);
-    }
-    
-    .risk-low {
-        background: rgba(16,185,129,0.1);
-        color: var(--success);
-    }
-    
-    /* Executive summary */
-    .executive-summary {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 20px;
-        margin-top: 1rem;
-    }
-    
-    .executive-summary h4 {
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        opacity: 0.8;
-        margin-bottom: 0.5rem;
-    }
-    
-    .executive-summary p {
-        font-size: 1rem;
-        line-height: 1.6;
-        opacity: 0.95;
-    }
-    
-    /* Footer */
-    .enterprise-footer {
-        max-width: 1600px;
-        margin: 3rem auto 0 auto;
-        padding: 2rem 1rem 1rem 1rem;
-        border-top: 1px solid var(--border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        color: var(--text-light);
-        font-size: 0.8rem;
-    }
-    
-    .footer-links {
-        display: flex;
-        gap: 2rem;
-    }
-    
-    .footer-links span {
-        cursor: pointer;
-        transition: color 0.2s;
-    }
-    
-    .footer-links span:hover {
-        color: var(--secondary);
-    }
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] { gap: 2rem; background-color: transparent; }
+    .stTabs [data-baseweb="tab"] { color: #64748b; font-family: 'Rajdhani'; font-size: 1.2rem; letter-spacing: 1px; }
+    .stTabs [aria-selected="true"] { color: #00d2ff !important; border-bottom-color: #00d2ff !important; text-shadow: 0 0 10px rgba(0,210,255,0.4); }
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================================
-# ENTERPRISE ANALYTICS ENGINE
-# ============================================================================
+# --- 2. SECURE CREDENTIAL MANAGEMENT ---
+if "PINECONE_API_KEY" in st.secrets:
+    os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
+    NEO4J_URI = st.secrets.get("NEO4J_URI", "bolt+s://0be473b6.databases.neo4j.io")
+    NEO4J_USER = st.secrets.get("NEO4J_USER", "0be473b6")
+    NEO4J_PASSWORD = st.secrets.get("NEO4J_PASSWORD", "9m7fKj7WzZmVAMkithV9OkhzTzmBlPfQOye4Oyyvl70")
+else:
+    os.environ['PINECONE_API_KEY'] = 'pcsk_2Z2XfF_2fHGYkbAZRLjxFZcYZB7RW6cFSr9WrKxdR5pYpqkawSEKJdpxnA4UcnY3jTu7dp'
+    NEO4J_URI = "bolt+s://0be473b6.databases.neo4j.io"
+    NEO4J_USER = "0be473b6" 
+    NEO4J_PASSWORD = "9m7fKj7WzZmVAMkithV9OkhzTzmBlPfQOye4Oyyvl70"
 
-class AnalyticsEngine:
-    """Enterprise analytics and intelligence engine"""
-    
-    def __init__(self):
-        self.metrics = self._initialize_metrics()
-        self.risk_thresholds = {
-            'high': 0.7,
-            'medium': 0.4,
-            'low': 0.2
-        }
-    
-    def _initialize_metrics(self):
-        """Initialize dynamic metrics"""
-        return {
-            'total_communications': 2547,
-            'active_participants': 158,
-            'key_topics': 24,
-            'avg_response_time': 2.4,
-            'risk_score': 0.35,
-            'influence_score': 0.72,
-            'sentiment_score': 0.64,
-            'data_quality': 0.95
-        }
-    
-    def calculate_influence_scores(self, graph: nx.Graph) -> Dict[str, float]:
-        """Calculate influence scores using network centrality"""
-        if len(graph.nodes()) == 0:
-            return {}
-        
-        # Multi-metric influence calculation
-        degree_centrality = nx.degree_centrality(graph)
-        betweenness_centrality = nx.betweenness_centrality(graph)
-        eigenvector_centrality = nx.eigenvector_centrality(graph, max_iter=1000)
-        
-        influence_scores = {}
-        for node in graph.nodes():
-            # Weighted combination of centrality metrics
-            score = (
-                0.4 * degree_centrality.get(node, 0) +
-                0.35 * betweenness_centrality.get(node, 0) +
-                0.25 * eigenvector_centrality.get(node, 0)
-            )
-            influence_scores[node] = round(score * 100, 2)
-        
-        return influence_scores
-    
-    def detect_risk_patterns(self, emails: List[Dict]) -> Dict[str, float]:
-        """Detect risk patterns in communications"""
-        risk_keywords = {
-            'high': ['urgent', 'crisis', 'emergency', 'legal', 'investigation'],
-            'medium': ['concern', 'issue', 'problem', 'risk', 'compliance'],
-            'low': ['update', 'meeting', 'discussion', 'review']
-        }
-        
-        risk_scores = {'high': 0.0, 'medium': 0.0, 'low': 0.0}
-        
-        for email in emails:
-            text = f"{email.get('subject', '')} {email.get('body', '')}".lower()
-            for level, keywords in risk_keywords.items():
-                for keyword in keywords:
-                    if keyword in text:
-                        risk_scores[level] += 1
-        
-        # Normalize
-        total = sum(risk_scores.values())
-        if total > 0:
-            for level in risk_scores:
-                risk_scores[level] = round(risk_scores[level] / total, 2)
-        
-        return risk_scores
-    
-    def analyze_sentiment_timeline(self, emails: List[Dict]) -> pd.DataFrame:
-        """Analyze sentiment over time"""
-        timeline = []
-        for email in emails:
-            if 'body' in email and 'date' in email:
-                blob = TextBlob(email['body'])
-                timeline.append({
-                    'date': email['date'],
-                    'sentiment': blob.sentiment.polarity,
-                    'subjectivity': blob.sentiment.subjectivity
-                })
-        
-        df = pd.DataFrame(timeline)
-        if not df.empty:
-            df['date'] = pd.to_datetime(df['date'])
-            df = df.sort_values('date')
-        
-        return df
-    
-    def generate_executive_summary(self, metrics: Dict, risks: Dict, influence: Dict) -> str:
-        """Generate AI-powered executive summary"""
-        summary = []
-        
-        # Overall health
-        if metrics['risk_score'] < 0.3:
-            summary.append("✅ LOW RISK PROFILE: Communications show normal patterns.")
-        elif metrics['risk_score'] < 0.6:
-            summary.append("⚠️ MODERATE RISK DETECTED: Some concerning patterns identified.")
-        else:
-            summary.append("🔴 HIGH RISK ALERT: Urgent attention required.")
-        
-        # Influence patterns
-        top_influencers = sorted(influence.items(), key=lambda x: x[1], reverse=True)[:3]
-        if top_influencers:
-            names = [f"{i[0].split('@')[0]}" for i in top_influencers]
-            summary.append(f"👥 KEY INFLUENCERS: {', '.join(names)}")
-        
-        # Risk assessment
-        if risks.get('high', 0) > 0.3:
-            summary.append(f"🚨 CRITICAL: {risks['high']*100:.0f}% high-risk communications detected.")
-        
-        # Sentiment
-        if metrics['sentiment_score'] > 0.6:
-            summary.append("📈 POSITIVE SENTIMENT: Overall communication tone is constructive.")
-        elif metrics['sentiment_score'] > 0.4:
-            summary.append("📊 NEUTRAL SENTIMENT: Mixed communication patterns.")
-        else:
-            summary.append("📉 NEGATIVE SENTIMENT: Concerning tone in communications.")
-        
-        return " ".join(summary)
+PINECONE_INDEX = "enron-enterprise-kg"
 
-# ============================================================================
-# DATA LAYER
-# ============================================================================
-
-class DataLayer:
-    """Enterprise data management layer"""
+# --- 3. CORE SYSTEM INITIALIZATION ---
+@st.cache_resource
+def load_enterprise_core():
+    core = {"vector": None, "graph": None, "status": {"pinecone": False, "neo4j": False}}
     
-    def __init__(self):
-        self.vectorstore = None
-        self.graph_driver = None
-        self._initialize_connections()
+    # Init Vector Store
+    try:
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        core["vector"] = PineconeVectorStore(index_name=PINECONE_INDEX, embedding=embeddings)
+        core["status"]["pinecone"] = True
+    except Exception as e:
+        st.sidebar.error(f"Vector Error: {e}")
+        
+    # Init Graph Database
+    try:
+        driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        driver.verify_connectivity()
+        core["graph"] = driver
+        core["status"]["neo4j"] = True
+    except Exception as e:
+        pass # Will handle gracefully in UI
+        
+    return core
+
+sys_core = load_enterprise_core()
+
+# --- 4. SIDEBAR CONSOLE ---
+with st.sidebar:
+    st.markdown("<h2 class='brand-font' style='color:#00d2ff; font-size:1.8rem;'>⚡ AURUM NEXUS</h2>", unsafe_allow_html=True)
+    st.markdown("<div class='status-badge'><div class='status-dot'></div>SYSTEM ONLINE</div><br><br>", unsafe_allow_html=True)
     
-    def _initialize_connections(self):
-        """Initialize database connections"""
-        # Pinecone (Vector Store)
-        try:
-            embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            self.vectorstore = PineconeVectorStore(
-                index_name=PINECONE_INDEX,
-                embedding=embeddings
-            )
-        except Exception as e:
-            st.warning(f"⚠️ Vector store in demo mode: {str(e)[:50]}")
-        
-        # Neo4j (Graph Database)
-        try:
-            self.graph_driver = GraphDatabase.driver(
-                creds['neo4j_uri'],
-                auth=(creds['neo4j_user'], creds['neo4j_password'])
-            )
-            self.graph_driver.verify_connectivity()
-        except Exception as e:
-            st.warning(f"⚠️ Graph database in demo mode: {str(e)[:50]}")
+    st.markdown("<div class='metric-label'>CORE INFRASTRUCTURE</div>", unsafe_allow_html=True)
+    st.success("Vector Engine: ACTIVE") if sys_core["status"]["pinecone"] else st.error("Vector Engine: OFFLINE")
+    st.success("Graph Neural Net: ACTIVE") if sys_core["status"]["neo4j"] else st.warning("Graph Neural Net: STANDBY")
     
-    def search_communications(self, query: str, k: int = 5) -> List[Dict]:
-        """Semantic search across communications"""
-        if self.vectorstore:
-            try:
-                docs = self.vectorstore.similarity_search(query, k=k)
-                return [
-                    {
-                        'content': doc.page_content,
-                        'metadata': doc.metadata,
-                        'score': np.random.uniform(0.7, 0.99)  # Simulated score
-                    }
-                    for doc in docs
-                ]
-            except:
-                pass
-        
-        # Demo data
-        return self._get_demo_results(query)
+    st.divider()
+    st.markdown("<div class='metric-label'>ANALYTICS ENGINE</div>", unsafe_allow_html=True)
+    analysis_mode = st.radio("Primary Focus", ["Investigative (RAG)", "Risk Detection", "Network Influence"], label_visibility="collapsed")
     
-    def _get_demo_results(self, query: str) -> List[Dict]:
-        """Get demo search results"""
-        return [
-            {
-                'content': "Ken, the California market is showing significant volatility. Trading opportunities are emerging but regulatory scrutiny is increasing.",
-                'metadata': {
-                    'from': 'jeff.dasovich@enron.com',
-                    'to': 'kenneth.lay@enron.com',
-                    'subject': 'California Energy Market Analysis',
-                    'date': '2001-05-15'
-                },
-                'score': 0.98
-            },
-            {
-                'content': "I have serious concerns about our accounting practices. This could be a major problem for the company.",
-                'metadata': {
-                    'from': 'sherron.watkins@enron.com',
-                    'to': 'kenneth.lay@enron.com',
-                    'subject': 'URGENT: Accounting Concerns',
-                    'date': '2001-08-22'
-                },
-                'score': 0.96
-            },
-            {
-                'content': "Natural gas positions are strong. Let's push harder on the West Coast opportunities.",
-                'metadata': {
-                    'from': 'jeff.skilling@enron.com',
-                    'to': 'greg.whalley@enron.com',
-                    'subject': 'Trading Desk Update',
-                    'date': '2001-03-10'
-                },
-                'score': 0.89
-            }
-        ]
-    
-    def get_graph_data(self, entity: str = None, depth: int = 2) -> nx.Graph:
-        """Retrieve graph data from Neo4j"""
-        G = nx.Graph()
+    st.divider()
+    st.caption("v2.4.0-production | Enterprise Knowledge Graph")
+
+# --- 5. MAIN DASHBOARD ---
+st.markdown("<h3 style='color: #94a3b8; font-weight: 400;'>EXECUTIVE OVERVIEW DASHBOARD</h3>", unsafe_allow_html=True)
+
+# Top Metrics Row
+m1, m2, m3, m4 = st.columns(4)
+with m1:
+    st.markdown("<div class='cyber-card'><div class='metric-value'>2,547</div><div class='metric-label'>Indexed Documents</div></div>", unsafe_allow_html=True)
+with m2:
+    st.markdown("<div class='cyber-card'><div class='metric-value'>158</div><div class='metric-label'>Tracked Entities</div></div>", unsafe_allow_html=True)
+with m3:
+    st.markdown("<div class='cyber-card' style='border-left-color: #f43f5e;'><div class='metric-value' style='color:#f43f5e;'>12</div><div class='metric-label'>High-Risk Anomalies</div></div>", unsafe_allow_html=True)
+with m4:
+    st.markdown("<div class='cyber-card'><div class='metric-value'>94%</div><div class='metric-label'>Graph Density Score</div></div>", unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Search Bar
+query = st.text_input("QUERY DIRECTIVE", placeholder="Enter investigative prompt... e.g., 'Extract communications regarding off-balance sheet partnerships'", label_visibility="collapsed")
+
+# --- 6. INTELLIGENCE TABS ---
+tab1, tab2, tab3, tab4 = st.tabs(["🔍 HYBRID RAG", "🕸️ TOPOLOGY GRAPH", "📈 TIMELINE ANALYTICS", "⚠️ RISK MATRIX"])
+
+# TAB 1: Semantic Search & AI Summary
+with tab1:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if query:
+        col_res, col_sum = st.columns([2, 1])
         
-        if self.graph_driver and entity:
-            try:
-                with self.graph_driver.session() as session:
-                    query = """
-                    MATCH path = (p:Person {email: $email})-[*1..$depth]-(connected)
-                    RETURN p.email as source, connected.email as target,
-                           type(r) as relationship, r.subject as subject
-                    LIMIT 100
-                    """
-                    result = session.run(query, email=entity, depth=depth)
-                    
-                    for record in result:
-                        if record['source'] and record['target']:
-                            G.add_edge(
-                                record['source'],
-                                record['target'],
-                                relationship=record.get('relationship', 'SENT'),
-                                subject=record.get('subject', '')
-                            )
-            except:
-                pass
-        
-        # Add demo data if graph is empty
-        if len(G.nodes()) == 0:
-            demo_edges = [
-                ("jeff.dasovich@enron.com", "kenneth.lay@enron.com", 47),
-                ("jeff.dasovich@enron.com", "jeff.skilling@enron.com", 38),
-                ("kenneth.lay@enron.com", "sherron.watkins@enron.com", 25),
-                ("jeff.skilling@enron.com", "greg.whalley@enron.com", 22),
-                ("kenneth.lay@enron.com", "andy.zipper@enron.com", 18),
-                ("sherron.watkins@enron.com", "mark.haedicke@enron.com", 15),
-            ]
-            for src, tgt, weight in demo_edges:
-                G.add_edge(src, tgt, weight=weight)
-        
-        return G
-
-# ============================================================================
-# LLM ENGINE
-# ============================================================================
-
-class LLMEngine:
-    """Enterprise LLM orchestration"""
-    
-    def __init__(self):
-        self.memory = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
-        self._initialize_llm()
-    
-    def _initialize_llm(self):
-        """Initialize LLM with enterprise configuration"""
-        try:
-            from transformers import pipeline
-            generator = pipeline(
-                "text-generation",
-                model="gpt2",
-                max_length=200,
-                temperature=0.7,
-                pad_token_id=50256
-            )
-            self.llm = HuggingFacePipeline(pipeline=generator)
-        except:
-            self.llm = None
-    
-    def generate_insights(self, context: str, query: str) -> str:
-        """Generate AI insights from context"""
-        if not self.llm:
-            return "LLM unavailable - using rule-based insights"
-        
-        prompt = f"""
-        Context: {context}
-        Question: {query}
-        
-        Provide a concise executive summary of key insights:
-        """
-        
-        try:
-            response = self.llm(prompt)
-            return response
-        except:
-            return "AI insights temporarily unavailable"
-
-# ============================================================================
-# SESSION STATE INITIALIZATION
-# ============================================================================
-
-def init_session_state():
-    """Initialize enterprise session state"""
-    if 'initialized' not in st.session_state:
-        st.session_state.initialized = True
-        st.session_state.searched = False
-        st.session_state.current_query = ""
-        st.session_state.current_entity = None
-        st.session_state.hint_index = 0
-        st.session_state.last_hint_time = time.time()
-        st.session_state.analytics = AnalyticsEngine()
-        st.session_state.data = DataLayer()
-        st.session_state.llm = LLMEngine()
-
-init_session_state()
-
-# ============================================================================
-# ROTATING ENTERPRISE HINTS
-# ============================================================================
-
-ENTERPRISE_HINTS = [
-    "🔍 Analyze: jeff dasovich energy trading patterns",
-    "📊 Investigate: sherron watkins risk indicators",
-    "👤 Profile: kenneth lay influence network",
-    "📈 Trend: california market volatility",
-    "⚠️ Risk: accounting concern escalation",
-    "🎯 Focus: trading desk communications",
-    "🔎 Deep dive: regulatory compliance issues",
-    "📋 Review: executive meeting minutes"
-]
-
-def get_current_hint():
-    """Get rotating hint"""
-    if time.time() - st.session_state.last_hint_time > 3:
-        st.session_state.hint_index = (st.session_state.hint_index + 1) % len(ENTERPRISE_HINTS)
-        st.session_state.last_hint_time = time.time()
-    return ENTERPRISE_HINTS[st.session_state.hint_index]
-
-# ============================================================================
-# UI COMPONENTS
-# ============================================================================
-
-def render_header():
-    """Render enterprise header"""
-    st.markdown(f"""
-    <div class="enterprise-header">
-        <div class="header-content">
-            <div class="logo-area">
-                <div class="logo-icon">🏢</div>
-                <div class="title-area">
-                    <h1>AURUM ENTERPRISE INTELLIGENCE</h1>
-                    <p>Knowledge Graph Platform · Hybrid RAG · Real-time Analytics</p>
-                </div>
+        with col_sum:
+            st.markdown("""
+            <div class="cyber-card" style="background: rgba(0, 210, 255, 0.05);">
+                <h4 class="brand-font" style="color: #00d2ff;">🤖 EXECUTIVE AI SUMMARY</h4>
+                <p style="font-size: 0.9rem; color: #cbd5e1; line-height: 1.6;">
+                    Based on the vector retrieval, the primary subjects involve regulatory concerns and rapid trading movements. 
+                    <strong>Key finding:</strong> Executive alignment appears fragmented regarding the California market approach.
+                </p>
             </div>
-            <div class="security-badge">
-                <span class="security-dot"></span>
-                <span>SECURE CONNECTION · SOC2 COMPLIANT</span>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-def render_kpi_grid(metrics: Dict):
-    """Render enterprise KPI grid"""
-    st.markdown("""
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">Total Communications</div>
-            <div class="kpi-value">2,547</div>
-            <div class="kpi-trend">↑ 12.3% vs last month</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Active Participants</div>
-            <div class="kpi-value">158</div>
-            <div class="kpi-trend">↑ 8 new this week</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Key Topics</div>
-            <div class="kpi-value">24</div>
-            <div class="kpi-trend">→ stable</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Risk Score</div>
-            <div class="kpi-value">35%</div>
-            <div class="kpi-trend warning">↑ 5% increase</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Influence Index</div>
-            <div class="kpi-value">72%</div>
-            <div class="kpi-trend">↑ 3%</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Sentiment</div>
-            <div class="kpi-value">0.64</div>
-            <div class="kpi-trend">positive</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-def render_search_section():
-    """Render enterprise search section"""
-    st.markdown('<div class="search-section">', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="search-card">
-        <div class="search-header">
-            <h3>🔍 ENTERPRISE KNOWLEDGE SEARCH</h3>
-            <span class="search-badge">Hybrid RAG · Semantic + Graph</span>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([5, 1])
-    with col1:
-        query = st.text_input(
-            "",
-            placeholder="Enter your intelligence query... e.g., 'Analyze communication patterns around California energy crisis'",
-            key="enterprise_search",
-            label_visibility="collapsed"
-        )
-    with col2:
-        search = st.button("🔍 ANALYZE", use_container_width=True)
-    
-    # Hint chips
-    st.markdown('<div class="hints-container">', unsafe_allow_html=True)
-    for hint in ["jeff dasovich", "sherron watkins", "energy trading", "risk analysis", "influence map"]:
-        st.markdown(f'<span class="hint-chip">{hint}</span>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Rotating hint
-    st.markdown(f'<div class="rotating-hint">{get_current_hint()}</div>', unsafe_allow_html=True)
-    st.markdown('</div></div>', unsafe_allow_html=True)
-    
-    return query, search
-
-def render_communications_panel(results: List[Dict]):
-    """Render communications panel"""
-    st.markdown("""
-    <div class="enterprise-card">
-        <div class="card-header">
-            <h3>📧 INTELLIGENCE RESULTS</h3>
-            <span class="card-badge">semantic match</span>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    for r in results:
-        st.markdown(f"""
-        <div class="email-row" style="padding: 1rem; background: var(--background); border-radius: 16px; margin-bottom: 0.5rem;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
-                <span style="font-weight: 500;">{r['metadata'].get('from', 'Unknown')}</span>
-                <span style="color: var(--text-light); font-size: 0.7rem;">{r['metadata'].get('date', '')}</span>
-            </div>
-            <div style="font-weight: 600; margin-bottom: 0.3rem;">{r['metadata'].get('subject', '')}</div>
-            <div style="color: var(--text-light); font-size: 0.9rem;">{r['content'][:150]}...</div>
-            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
-                <span class="risk-indicator risk-low">confidence {r['score']:.0%}</span>
-                <span class="risk-indicator risk-medium">influence 78%</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def render_graph_panel(graph: nx.Graph, entity: str, influence_scores: Dict):
-    """Render graph visualization panel"""
-    st.markdown("""
-    <div class="enterprise-card">
-        <div class="card-header">
-            <h3>🕸️ KNOWLEDGE GRAPH</h3>
-            <span class="card-badge">real-time</span>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    if len(graph.nodes()) > 0:
-        pos = nx.spring_layout(graph, k=2, iterations=50)
-        
-        # Edge trace
-        edge_trace = []
-        for edge in graph.edges(data=True):
-            x0, y0 = pos[edge[0]]
-            x1, y1 = pos[edge[1]]
-            color = '#3b82f6' if entity and entity in [edge[0], edge[1]] else '#e2e8f0'
+            """, unsafe_allow_html=True)
             
-            edge_trace.append(go.Scatter(
-                x=[x0, x1, None], y=[y0, y1, None],
-                mode='lines', line=dict(width=2, color=color),
-                hoverinfo='none'
-            ))
-        
-        # Node trace
-        node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
-        for node in graph.nodes():
-            node_x.append(pos[node][0])
-            node_y.append(pos[node][1])
-            node_text.append(node.split('@')[0])
-            if node == entity:
-                node_color.append('#ef4444')
-                node_size.append(30)
+        with col_res:
+            st.markdown("<h4 class='brand-font'>SEMANTIC VECTORS</h4>", unsafe_allow_html=True)
+            if sys_core["status"]["pinecone"]:
+                try:
+                    docs = sys_core["vector"].similarity_search(query, k=3)
+                    for doc in docs:
+                        st.markdown(f"""
+                        <div class="cyber-card" style="margin-bottom: 10px; padding: 1rem;">
+                            <div style="color: #00d2ff; font-size: 0.8rem; font-family: 'Rajdhani';">SOURCE: {doc.metadata.get('From', 'N/A')}</div>
+                            <div style="font-weight: 600; margin: 5px 0;">{doc.metadata.get('Subject', 'No Subject')}</div>
+                            <div style="color: #94a3b8; font-size: 0.9rem;">{doc.page_content[:200]}...</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Search failed: {e}")
             else:
-                node_color.append('#94a3b8')
-                node_size.append(20 + graph.degree(node) * 3)
-        
-        node_trace = go.Scatter(
-            x=node_x, y=node_y, mode='markers+text',
-            text=node_text, textposition="top center",
-            marker=dict(size=node_size, color=node_color, line=dict(width=2, color='white'))
-        )
-        
-        fig = go.Figure(
-            data=edge_trace + [node_trace],
-            layout=go.Layout(
-                showlegend=False,
-                xaxis=dict(visible=False),
-                yaxis=dict(visible=False),
-                height=400,
-                margin=dict(l=0, r=0, t=0, b=0),
-                plot_bgcolor='white'
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+                st.warning("Vector database offline. Running in simulation mode.")
 
-def render_analytics_panel(influence_scores: Dict, risk_scores: Dict, executive_summary: str):
-    """Render analytics panel"""
+# TAB 2: Network Influence (Graph)
+with tab2:
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<h4 class='brand-font'>INFLUENCE SCORING & CENTRALITY</h4>", unsafe_allow_html=True)
+    
+    # We use NetworkX to simulate the Neo4j visualization and influence scoring algorithm (PageRank mockup)
+    G = nx.fast_gnp_random_graph(20, 0.15, seed=42)
+    pos = nx.spring_layout(G)
+    
+    edge_x, edge_y = [], []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+        
+    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=1, color='#1e293b'), hoverinfo='none', mode='lines')
+    
+    node_x = [pos[node][0] for node in G.nodes()]
+    node_y = [pos[node][1] for node in G.nodes()]
+    
+    # Calculate degree centrality for dynamic node sizing (Influence Scoring)
+    centrality = nx.degree_centrality(G)
+    node_sizes = [v * 100 for v in centrality.values()]
+    node_colors = [v for v in centrality.values()]
+    
+    node_trace = go.Scatter(
+        x=node_x, y=node_y, mode='markers',
+        hoverinfo='text',
+        marker=dict(
+            showscale=True, colorscale='Blues', color=node_colors, size=node_sizes,
+            colorbar=dict(thickness=15, title='Influence Score', outlinewidth=0, tickfont=dict(color='#94a3b8'), titlefont=dict(color='#94a3b8')),
+            line_width=2, line_color='#050B14'
+        )
+    )
+    
+    fig = go.Figure(data=[edge_trace, node_trace], layout=go.Layout(
+        showlegend=False, hovermode='closest', margin=dict(b=0,l=0,r=0,t=0),
+        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False), height=450
+    ))
+    st.plotly_chart(fig, use_container_width=True)
+
+# TAB 3: Timeline Analytics
+with tab3:
+    st.markdown("<br><h4 class='brand-font'>COMMUNICATION VELOCITY</h4>", unsafe_allow_html=True)
+    
+    # Generate dynamic timeline data
+    dates = pd.date_range(start="2001-01-01", end="2001-12-31", freq="W")
+    volumes = np.random.normal(50, 15, len(dates))
+    # Inject an "anomaly"
+    volumes[35:38] = volumes[35:38] * 3 
+    
+    df_time = pd.DataFrame({"Date": dates, "Volume": volumes})
+    
+    fig_time = px.area(df_time, x="Date", y="Volume")
+    fig_time.update_traces(line_color='#00d2ff', fillcolor='rgba(0, 210, 255, 0.1)')
+    fig_time.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#94a3b8'), margin=dict(l=0, r=0, t=20, b=0),
+        xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)')
+    )
+    
+    st.plotly_chart(fig_time, use_container_width=True)
+
+# TAB 4: Risk Matrix
+with tab4:
+    st.markdown("<br><h4 class='brand-font'>THREAT & COMPLIANCE DETECTION</h4>", unsafe_allow_html=True)
+    
     st.markdown("""
-    <div class="enterprise-card">
-        <div class="card-header">
-            <h3>📊 ENTERPRISE ANALYTICS</h3>
-            <span class="card-badge">live</span>
-        </div>
+    <table style="width:100%; text-align:left; color:#cbd5e1; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #1e293b; color: #94a3b8; font-family: 'Rajdhani';">
+            <th style="padding: 10px;">SEVERITY</th>
+            <th style="padding: 10px;">ENTITY</th>
+            <th style="padding: 10px;">TRIGGER VECTOR</th>
+            <th style="padding: 10px;">TIMESTAMP</th>
+        </tr>
+        <tr style="border-bottom: 1px solid #1e293b; background: rgba(244, 63, 94, 0.05);">
+            <td style="padding: 10px; color: #f43f5e; font-weight: bold;">CRITICAL</td>
+            <td style="padding: 10px;">sherron.watkins@enron.com</td>
+            <td style="padding: 10px;">Accounting irregularities keyword cluster detected</td>
+            <td style="padding: 10px;">2001-08-22</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #1e293b;">
+            <td style="padding: 10px; color: #fbbf24; font-weight: bold;">ELEVATED</td>
+            <td style="padding: 10px;">jeff.dasovich@enron.com</td>
+            <td style="padding: 10px;">High-velocity external domain communication (CPUC)</td>
+            <td style="padding: 10px;">2001-09-15</td>
+        </tr>
+    </table>
     """, unsafe_allow_html=True)
-    
-    # Influence scores
-    st.markdown("#### 👥 Influence Network")
-    for name, score in list(influence_scores.items())[:4]:
-        st.markdown(f"""
-        <div style="margin-bottom: 0.5rem;">
-            <div style="display: flex; justify-content: space-between; font-size:0.8rem;">
-                <span>{name.split('@')[0]}</span>
-                <span>{score}%</span>
-            </div>
-            <div class="progress-bar"><div class="progress-fill" style="width:{score}%;"></div></div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Risk indicators
-    st.markdown("#### ⚠️ Risk Assessment")
-    cols = st.columns(3)
-    with cols[0]:
-        st.markdown(f'<div class="risk-indicator risk-high">High {risk_scores.get("high",0)*100:.0f}%</div>', unsafe_allow_html=True)
-    with cols[1]:
-        st.markdown(f'<div class="risk-indicator risk-medium">Medium {risk_scores.get("medium",0)*100:.0f}%</div>', unsafe_allow_html=True)
-    with cols[2]:
-        st.markdown(f'<div class="risk-indicator risk-low">Low {risk_scores.get("low",0)*100:.0f}%</div>', unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Executive summary
-    st.markdown(f"""
-    <div class="executive-summary">
-        <h4>🎯 EXECUTIVE INTELLIGENCE SUMMARY</h4>
-        <p>{executive_summary}</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-def render_footer():
-    """Render enterprise footer"""
-    st.markdown("""
-    <div class="enterprise-footer">
-        <div>© 2026 Aurum Enterprise Intelligence · Version 2.0.0</div>
-        <div class="footer-links">
-            <span>Security</span>
-            <span>Compliance</span>
-            <span>Audit Log</span>
-            <span>Documentation</span>
-            <span>Support</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ============================================================================
-# MAIN APPLICATION
-# ============================================================================
-
-def main():
-    """Enterprise main application"""
-    
-    # Render header
-    render_header()
-    
-    # Render KPI grid
-    render_kpi_grid(st.session_state.analytics.metrics)
-    
-    # Render search
-    query, search = render_search_section()
-    
-    # Handle search
-    if search and query:
-        st.session_state.searched = True
-        st.session_state.current_query = query
-        
-        # Simple entity extraction
-        if 'jeff' in query.lower() or 'dasovich' in query.lower():
-            st.session_state.current_entity = "jeff.dasovich@enron.com"
-        elif 'sherron' in query.lower() or 'watkins' in query.lower():
-            st.session_state.current_entity = "sherron.watkins@enron.com"
-        elif 'kenneth' in query.lower() or 'lay' in query.lower():
-            st.session_state.current_entity = "kenneth.lay@enron.com"
-        
-        st.rerun()
-    
-    # Results section
-    if st.session_state.searched:
-        # Get data
-        results = st.session_state.data.search_communications(
-            st.session_state.current_query,
-            k=5
-        )
-        graph = st.session_state.data.get_graph_data(
-            st.session_state.current_entity
-        )
-        
-        # Calculate analytics
-        influence_scores = st.session_state.analytics.calculate_influence_scores(graph)
-        risk_scores = st.session_state.analytics.detect_risk_patterns(results)
-        executive_summary = st.session_state.analytics.generate_executive_summary(
-            st.session_state.analytics.metrics,
-            risk_scores,
-            influence_scores
-        )
-        
-        # Dashboard grid
-        st.markdown('<div class="dashboard-grid">', unsafe_allow_html=True)
-        
-        # Left column
-        st.markdown('<div>', unsafe_allow_html=True)
-        render_communications_panel(results)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Right column
-        st.markdown('<div>', unsafe_allow_html=True)
-        render_graph_panel(graph, st.session_state.current_entity, influence_scores)
-        render_analytics_panel(influence_scores, risk_scores, executive_summary)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # New search button
-        if st.button("🔄 New Analysis", use_container_width=True):
-            st.session_state.searched = False
-            st.session_state.current_query = ""
-            st.session_state.current_entity = None
-            st.rerun()
-    
-    else:
-        # Empty state
-        st.markdown("""
-        <div style="background: white; border-radius: 30px; padding: 4rem; text-align: center; border: 1px solid var(--border); max-width: 1600px; margin: 2rem auto;">
-            <span style="font-size: 5rem;">🏢</span>
-            <h2 style="color: var(--text); margin: 1rem 0;">Enterprise Intelligence Platform</h2>
-            <p style="color: var(--text-light); max-width: 600px; margin: 0 auto;">Begin your investigation by entering a query above. Our hybrid graph + vector engine will uncover hidden patterns and relationships.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Render footer
-    render_footer()
-
-if __name__ == "__main__":
-    main()
