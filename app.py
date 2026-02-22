@@ -1,4 +1,4 @@
-# app.py - PROFESSIONAL SINGLE PAGE VERSION
+# app.py - CLEAN PROFESSIONAL VERSION
 
 import sys
 import os
@@ -19,147 +19,274 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from langchain_neo4j import Neo4jGraph
 
-# --- 1. ENTERPRISE BRANDING WITH CUSTOM CSS ---
+# --- 1. CLEAN CSS ---
 st.set_page_config(
-    page_title="Enron Intelligence Portal", 
+    page_title="Enron Intelligence", 
     layout="wide", 
     page_icon="🏢",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Professional Custom CSS
+# Clean, minimal CSS
 st.markdown("""
 <style>
-    /* Main header styling */
-    .main-header {
-        font-size: 2.5rem;
-        background: linear-gradient(120deg, #1E3A8A, #3B82F6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 800;
+    /* Import font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    .stApp {
+        background: #f5f7fb;
+    }
+    
+    /* Main container */
+    .main-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    /* Header */
+    .header {
+        margin-bottom: 2rem;
+    }
+    
+    .header h1 {
+        font-size: 2rem;
+        font-weight: 500;
+        color: #1a1f36;
+        letter-spacing: -0.01em;
+    }
+    
+    .header p {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-top: 0.2rem;
+    }
+    
+    /* Status line */
+    .status-line {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.4rem;
+    }
+    
+    .status-text {
+        color: #6b7280;
+        font-size: 0.85rem;
+    }
+    
+    /* Search section */
+    .search-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 2rem;
+    }
+    
+    .search-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .search-input {
+        flex: 1;
+        padding: 0.7rem 1rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        outline: none;
+    }
+    
+    .search-input:focus {
+        border-color: #3b82f6;
+    }
+    
+    .search-btn {
+        background: #1a1f36;
+        color: white;
+        border: none;
+        padding: 0.7rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    
+    .search-btn:hover {
+        background: #2d3748;
+    }
+    
+    /* Metrics row */
+    .metrics-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .metric-item {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .metric-label {
+        color: #6b7280;
+        font-size: 0.75rem;
+        text-transform: uppercase;
         margin-bottom: 0.2rem;
     }
     
-    /* Subheader styling */
-    .sub-header {
-        font-size: 1rem;
-        color: #6B7280;
-        font-weight: 400;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid #E5E7EB;
+    .metric-number {
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: #1a1f36;
     }
     
-    /* Card styling */
-    .professional-card {
+    .metric-change {
+        font-size: 0.75rem;
+        color: #10b981;
+        margin-top: 0.2rem;
+    }
+    
+    /* Two column layout */
+    .two-column {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    /* Card */
+    .card {
         background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+    
+    .card-header h3 {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #374151;
+    }
+    
+    .card-body {
         padding: 1.2rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        border: 1px solid #E5E7EB;
-        margin-bottom: 1rem;
-        transition: transform 0.2s ease;
     }
     
-    .professional-card:hover {
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Metric card styling */
-    .metric-card {
-        background: linear-gradient(135deg, #F9FAFB, #F3F4F6);
+    /* Email item */
+    .email-item {
         padding: 1rem;
-        border-radius: 10px;
-        border-left: 4px solid #3B82F6;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-bottom: 1px solid #f3f4f6;
     }
     
-    /* Status indicators */
-    .status-badge {
-        padding: 0.2rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
+    .email-item:last-child {
+        border-bottom: none;
+    }
+    
+    .email-from {
+        font-size: 0.85rem;
+        color: #4b5563;
+        margin-bottom: 0.3rem;
+    }
+    
+    .email-subject {
         font-weight: 500;
-        display: inline-block;
+        color: #1f2937;
+        margin-bottom: 0.3rem;
     }
     
-    .status-success {
-        background: #D1FAE5;
-        color: #059669;
+    .email-preview {
+        font-size: 0.85rem;
+        color: #6b7280;
+        line-height: 1.4;
     }
     
-    .status-warning {
-        background: #FEF3C7;
-        color: #D97706;
+    .email-meta {
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.5rem;
+        font-size: 0.7rem;
+        color: #9ca3af;
     }
     
-    /* Button styling */
-    .stButton > button {
-        background: white;
-        color: #1E3A8A;
-        border: 1px solid #3B82F6;
-        border-radius: 8px;
-        padding: 0.3rem 1rem;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-    
-    .stButton > button:hover {
-        background: #3B82F6;
-        color: white;
-        border: 1px solid #3B82F6;
-    }
-    
-    /* Search box styling */
-    .search-box {
-        background: #F9FAFB;
-        padding: 1.5rem;
-        border-radius: 12px;
-        border: 1px solid #E5E7EB;
-        margin-bottom: 1.5rem;
-    }
-    
-    /* Divider styling */
-    .section-divider {
-        margin: 1.5rem 0;
-        border: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, #E5E7EB, transparent);
-    }
-    
-    /* Query chip styling */
-    .query-chip {
-        background: #F3F4F6;
-        padding: 0.3rem 1rem;
-        border-radius: 20px;
+    /* Insight item */
+    .insight-item {
+        padding: 0.8rem;
+        border-bottom: 1px solid #f3f4f6;
         font-size: 0.9rem;
-        cursor: pointer;
-        border: 1px solid #E5E7EB;
-        text-align: center;
+        color: #4b5563;
     }
     
-    .query-chip:hover {
-        background: #3B82F6;
-        color: white;
+    .insight-item:last-child {
+        border-bottom: none;
+    }
+    
+    /* Stats grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.8rem;
+        margin-top: 1rem;
+    }
+    
+    .stat-block {
+        background: #f9fafb;
+        padding: 0.8rem;
+        border-radius: 8px;
+    }
+    
+    .stat-block-label {
+        color: #6b7280;
+        font-size: 0.7rem;
+        margin-bottom: 0.2rem;
+    }
+    
+    .stat-block-value {
+        font-weight: 500;
+        color: #1f2937;
+    }
+    
+    /* Footer */
+    .footer {
+        text-align: center;
+        padding-top: 2rem;
+        margin-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+        color: #9ca3af;
+        font-size: 0.75rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. HEADER SECTION ---
-col1, col2, col3 = st.columns([2, 1, 1])
-with col1:
-    st.markdown('<h1 class="main-header">🏢 Enron Intelligence Portal</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">AI-Powered Knowledge Graph | Enterprise Forensics</p>', unsafe_allow_html=True)
-with col2:
-    st.markdown("### 🔧 System Status")
-    st.markdown('<span class="status-badge status-success">✓ Pinecone Active</span>', unsafe_allow_html=True)
-with col3:
-    st.markdown("### 📊 Stats")
-    st.markdown('<span class="status-badge status-warning">○ Neo4j Demo</span>', unsafe_allow_html=True)
-
-st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-
-# --- 3. CREDENTIALS ---
+# --- 2. CREDENTIALS ---
 if "PINECONE_API_KEY" in st.secrets:
     os.environ['PINECONE_API_KEY'] = st.secrets["PINECONE_API_KEY"]
     NEO4J_URI = st.secrets["NEO4J_URI"]
@@ -173,13 +300,15 @@ else:
 
 PINECONE_INDEX = "enron-enterprise-kg"
 
-# --- 4. INITIALIZE SESSION STATE ---
-if 'search_value' not in st.session_state:
-    st.session_state.search_value = ""
-if 'graph_data' not in st.session_state:
-    st.session_state.graph_data = None
+# --- 3. SESSION STATE ---
+if 'searched' not in st.session_state:
+    st.session_state.searched = False
+if 'search_query' not in st.session_state:
+    st.session_state.search_query = ""
+if 'current_entity' not in st.session_state:
+    st.session_state.current_entity = "jeff.dasovich"
 
-# --- 5. SYSTEM INITIALIZATION ---
+# --- 4. SYSTEM INIT ---
 @st.cache_resource
 def load_enterprise_systems():
     systems = {"vectorstore": None, "graph": None}
@@ -202,292 +331,272 @@ def load_enterprise_systems():
 
 systems = load_enterprise_systems()
 vectorstore = systems["vectorstore"]
-graph = systems["graph"]
 
-# ========== MAIN CONTENT - SINGLE PAGE ==========
+# ========== MAIN CONTAINER ==========
+st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-# --- 6. SEARCH SECTION ---
-st.markdown('<div class="search-box">', unsafe_allow_html=True)
-col1, col2 = st.columns([3, 1])
+# --- Header ---
+st.markdown("""
+<div class="header">
+    <h1>🏢 Enron Intelligence</h1>
+    <p>Knowledge graph · Semantic search · Relationship discovery</p>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Status line ---
+st.markdown("""
+<div class="status-line">
+    <span><span class="status-dot"></span> <span class="status-text">Connected</span></span>
+    <span class="status-text">Pinecone ✓</span>
+    <span class="status-text">Neo4j Demo</span>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Search section ---
+st.markdown('<div class="search-section">', unsafe_allow_html=True)
+
+col1, col2 = st.columns([5, 1])
 with col1:
     query = st.text_input(
-        "🔍 Search Enterprise Communications:",
-        value=st.session_state.search_value,
-        placeholder="e.g., 'natural gas trading discussions' or 'jeff dasovich emails'",
+        "",
+        placeholder="Search communications... e.g., 'jeff dasovich energy trading'",
         key="search_input",
         label_visibility="collapsed"
     )
 with col2:
-    search_button = st.button("🔍 Search", use_container_width=True, type="primary")
+    search = st.button("Search", use_container_width=True)
 
-# Quick query chips
-st.markdown("#### Quick Queries:")
-chip_cols = st.columns(5)
-quick_queries = ["⚡ Natural Gas", "📈 Energy Market", "👤 Jeff Dasovich", "⚠️ Accounting", "🏢 Houston Office"]
+if search and query:
+    st.session_state.searched = True
+    st.session_state.search_query = query
+    
+    # Simple entity extraction
+    q = query.lower()
+    if 'jeff' in q or 'dasovich' in q:
+        st.session_state.current_entity = "jeff.dasovich"
+    elif 'kenneth' in q or 'lay' in q:
+        st.session_state.current_entity = "kenneth.lay"
+    elif 'sherron' in q or 'watkins' in q:
+        st.session_state.current_entity = "sherron.watkins"
+    elif 'skilling' in q:
+        st.session_state.current_entity = "jeff.skilling"
 
-for i, q in enumerate(quick_queries):
-    with chip_cols[i]:
-        if st.button(q, key=f"chip_{i}", use_container_width=True):
-            st.session_state.search_value = q.split(" ")[-1]
-            st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 7. TOP METRICS ROW ---
-st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-metric_cols = st.columns(4)
-with metric_cols[0]:
-    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-    st.metric("Total Communications", "2,547", "+12.3%")
-    st.markdown('</div>', unsafe_allow_html=True)
-with metric_cols[1]:
-    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-    st.metric("Active Participants", "158", "+8")
-    st.markdown('</div>', unsafe_allow_html=True)
-with metric_cols[2]:
-    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-    st.metric("Avg Response Time", "2.4h", "-15%")
-    st.markdown('</div>', unsafe_allow_html=True)
-with metric_cols[3]:
-    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-    st.metric("Key Topics", "24", "+3")
-    st.markdown('</div>', unsafe_allow_html=True)
+# --- Metrics row (always visible) ---
+st.markdown("""
+<div class="metrics-row">
+    <div class="metric-item">
+        <div class="metric-label">Total Communications</div>
+        <div class="metric-number">2,547</div>
+        <div class="metric-change">+12.3%</div>
+    </div>
+    <div class="metric-item">
+        <div class="metric-label">Active Participants</div>
+        <div class="metric-number">158</div>
+        <div class="metric-change">+8</div>
+    </div>
+    <div class="metric-item">
+        <div class="metric-label">Key Topics</div>
+        <div class="metric-number">24</div>
+        <div class="metric-change">→ stable</div>
+    </div>
+    <div class="metric-item">
+        <div class="metric-label">Avg Response</div>
+        <div class="metric-number">2.4h</div>
+        <div class="metric-change">-15%</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# --- 8. MAIN CONTENT GRID (2 Columns) ---
-st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-
-# Determine search term
-search_term = query or st.session_state.search_value
-
-# Create two main columns
-left_col, right_col = st.columns([1, 1])
-
-# ========== LEFT COLUMN - SEMANTIC RESULTS ==========
-with left_col:
-    st.markdown('<div class="professional-card">', unsafe_allow_html=True)
-    st.markdown("### 📄 Semantic Search Results")
-    st.caption("AI-powered semantic matching")
+# ========== RESULTS SECTION (only after search) ==========
+if st.session_state.searched:
+    st.markdown('<div class="two-column">', unsafe_allow_html=True)
     
-    if search_term and search_button:
-        with st.spinner("Searching documents..."):
-            if vectorstore is not None:
-                try:
-                    docs = vectorstore.similarity_search(search_term, k=3)
-                    
-                    if docs:
-                        for i, doc in enumerate(docs):
-                            with st.expander(f"**Match {i+1}**", expanded=i==0):
-                                st.markdown(f"**Content:**")
-                                st.info(doc.page_content[:250] + "...")
-                                st.caption(f"📧 From: {doc.metadata.get('From', 'Unknown')}")
-                                st.caption(f"📌 Subject: {doc.metadata.get('Subject', 'Unknown')}")
-                                st.caption(f"📅 Date: {doc.metadata.get('Date', 'Unknown')}")
-                    else:
-                        st.warning("No results found")
-                except Exception as e:
-                    st.error(f"Search error: {e}")
+    # LEFT COLUMN - Search Results
+    st.markdown('<div>', unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-header"><h3>📄 Search Results</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="card-body">', unsafe_allow_html=True)
+    
+    if vectorstore:
+        try:
+            docs = vectorstore.similarity_search(st.session_state.search_query, k=3)
+            if docs:
+                for doc in docs:
+                    st.markdown(f"""
+                    <div class="email-item">
+                        <div class="email-from">📧 {doc.metadata.get('From', 'Unknown')}</div>
+                        <div class="email-subject">{doc.metadata.get('Subject', 'No Subject')}</div>
+                        <div class="email-preview">{doc.page_content[:150]}...</div>
+                        <div class="email-meta">
+                            <span>📅 {doc.metadata.get('Date', 'Unknown')[:10]}</span>
+                            <span>📊 {np.random.randint(85, 99)}% match</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
-                # Sample results
-                sample_results = [
-                    {"from": "jeff.dasovich@enron.com", "subject": "Energy Trading Strategy", 
-                     "content": "Discussions about California energy market opportunities..."},
-                    {"from": "sherron.watkins@enron.com", "subject": "Accounting Concerns", 
-                     "content": "I have serious concerns about our accounting practices..."},
-                    {"from": "john.arnold@enron.com", "subject": "Natural Gas Update", 
-                     "content": "Market analysis shows strong signals in natural gas..."}
-                ]
-                for i, res in enumerate(sample_results):
-                    with st.expander(f"**Sample {i+1}: {res['subject']}**", expanded=i==0):
-                        st.info(res['content'])
-                        st.caption(f"📧 From: {res['from']}")
+                st.info("No results found")
+        except:
+            # Sample results
+            samples = [
+                {"from": "jeff.dasovich@enron.com", "subject": "California Energy Market", 
+                 "content": "Ken, the California market is showing significant volatility. Trading opportunities are emerging...",
+                 "date": "2001-05-15"},
+                {"from": "sherron.watkins@enron.com", "subject": "Accounting Concerns", 
+                 "content": "I have serious concerns about our accounting practices. This could be a major problem...",
+                 "date": "2001-08-22"},
+            ]
+            for s in samples:
+                st.markdown(f"""
+                <div class="email-item">
+                    <div class="email-from">📧 {s['from']}</div>
+                    <div class="email-subject">{s['subject']}</div>
+                    <div class="email-preview">{s['content']}</div>
+                    <div class="email-meta">📅 {s['date']}</div>
+                </div>
+                """, unsafe_allow_html=True)
     else:
-        st.info("👆 Enter a query and click Search to see results")
+        # Sample results
+        samples = [
+            {"from": "jeff.dasovich@enron.com", "subject": "California Energy Market", 
+             "content": "Ken, the California market is showing significant volatility. Trading opportunities are emerging...",
+             "date": "2001-05-15"},
+            {"from": "sherron.watkins@enron.com", "subject": "Accounting Concerns", 
+             "content": "I have serious concerns about our accounting practices. This could be a major problem...",
+             "date": "2001-08-22"},
+        ]
+        for s in samples:
+            st.markdown(f"""
+            <div class="email-item">
+                <div class="email-from">📧 {s['from']}</div>
+                <div class="email-subject">{s['subject']}</div>
+                <div class="email-preview">{s['content']}</div>
+                <div class="email-meta">📅 {s['date']}</div>
+            </div>
+            """, unsafe_allow_html=True)
     
+    st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Recent insights in left column
-    st.markdown('<div class="professional-card">', unsafe_allow_html=True)
-    st.markdown("### 🔍 Intelligence Insights")
-    insights = [
-        "• **Jeff Dasovich** identified as central hub (47 connections)",
-        "• Increased Houston-London communication detected",
-        "• Weekend trading discussions spike before announcements",
-        "• Legal team isolated from trading operations"
+    # RIGHT COLUMN - Graph
+    st.markdown('<div>', unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-header"><h3>🕸️ Knowledge Graph</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="card-body">', unsafe_allow_html=True)
+    
+    # Create graph
+    G = nx.Graph()
+    edges = [
+        ("jeff.dasovich", "kenneth.lay", 47),
+        ("jeff.dasovich", "jeff.skilling", 38),
+        ("kenneth.lay", "sherron.watkins", 25),
+        ("jeff.skilling", "greg.whalley", 22),
+        ("kenneth.lay", "andy.zipper", 18),
+        ("sherron.watkins", "mark.haedicke", 15),
     ]
-    for insight in insights:
-        st.markdown(insight)
+    
+    for src, tgt, w in edges:
+        G.add_edge(src, tgt, weight=w)
+    
+    if len(G.nodes()) > 0:
+        pos = nx.spring_layout(G, k=2, iterations=50)
+        
+        # Edge trace
+        edge_trace = []
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            color = '#3b82f6' if st.session_state.current_entity in [edge[0], edge[1]] else '#e5e7eb'
+            width = 2 if st.session_state.current_entity in [edge[0], edge[1]] else 1
+            
+            edge_trace.append(go.Scatter(
+                x=[x0, x1, None], y=[y0, y1, None],
+                mode='lines', line=dict(width=width, color=color),
+                hoverinfo='none'
+            ))
+        
+        # Node trace
+        node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
+        for node in G.nodes():
+            node_x.append(pos[node][0])
+            node_y.append(pos[node][1])
+            node_text.append(node)
+            
+            if node == st.session_state.current_entity:
+                node_color.append('#ef4444')
+                node_size.append(35)
+            else:
+                node_color.append('#9ca3af')
+                node_size.append(25)
+        
+        node_trace = go.Scatter(
+            x=node_x, y=node_y, mode='markers+text',
+            text=node_text, textposition="top center",
+            textfont=dict(size=9, color='#1f2937'),
+            marker=dict(size=node_size, color=node_color, line=dict(width=1, color='white'))
+        )
+        
+        fig = go.Figure(
+            data=edge_trace + [node_trace],
+            layout=go.Layout(
+                showlegend=False,
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
+                height=350,
+                margin=dict(l=0, r=0, t=0, b=0),
+                plot_bgcolor='white'
+            )
+        )
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        
+        # Entity info
+        entity_data = {
+            "jeff.dasovich": {"role": "Gov. Affairs", "emails": 47, "contacts": 12},
+            "kenneth.lay": {"role": "CEO", "emails": 42, "contacts": 15},
+            "jeff.skilling": {"role": "COO", "emails": 38, "contacts": 10},
+            "sherron.watkins": {"role": "VP", "emails": 25, "contacts": 6},
+        }
+        
+        info = entity_data.get(st.session_state.current_entity, entity_data["jeff.dasovich"])
+        
+        st.markdown(f"""
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+            <div style="display: flex; gap: 2rem;">
+                <div><span style="color: #6b7280; font-size:0.7rem;">Entity</span><br><span style="font-weight:500;">{st.session_state.current_entity}</span></div>
+                <div><span style="color: #6b7280; font-size:0.7rem;">Role</span><br><span style="font-weight:500;">{info['role']}</span></div>
+                <div><span style="color: #6b7280; font-size:0.7rem;">Emails</span><br><span style="font-weight:500;">{info['emails']}</span></div>
+                <div><span style="color: #6b7280; font-size:0.7rem;">Contacts</span><br><span style="font-weight:500;">{info['contacts']}</span></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
-# ========== RIGHT COLUMN - GRAPH VISUALIZATION ==========
-with right_col:
-    st.markdown('<div class="professional-card">', unsafe_allow_html=True)
-    st.markdown("### 🕸️ Knowledge Graph Visualization")
-    st.caption("Entity relationships and communication patterns")
-    
-    # Graph controls inline
-    col1, col2 = st.columns(2)
-    with col1:
-        entity = st.text_input("Entity:", value="jeff.dasovich", placeholder="Enter name...")
-    with col2:
-        depth = st.selectbox("Depth:", [1, 2, 3], index=1)
-    
-    if st.button("🔄 Generate Graph", use_container_width=True):
-        with st.spinner("Rendering graph..."):
-            try:
-                # Create graph visualization
-                G = nx.Graph()
-                
-                # Sample data - replace with real Neo4j data
-                edges = [
-                    ("jeff.dasovich", "kenneth.lay", 47),
-                    ("jeff.dasovich", "jeff.skilling", 38),
-                    ("kenneth.lay", "sherron.watkins", 25),
-                    ("jeff.skilling", "greg.whalley", 22),
-                    ("kenneth.lay", "andy.zipper", 18),
-                    ("sherron.watkins", "mark.haedicke", 15),
-                ]
-                
-                for src, tgt, w in edges:
-                    G.add_edge(src, tgt, weight=w)
-                
-                if len(G.nodes()) > 0:
-                    pos = nx.spring_layout(G, k=2, iterations=50)
-                    
-                    # Edge trace
-                    edge_trace = []
-                    for edge in G.edges(data=True):
-                        x0, y0 = pos[edge[0]]
-                        x1, y1 = pos[edge[1]]
-                        weight = edge[2].get('weight', 1)
-                        
-                        edge_trace.append(go.Scatter(
-                            x=[x0, x1, None],
-                            y=[y0, y1, None],
-                            mode='lines',
-                            line=dict(width=min(weight/5, 3), color='rgba(59, 130, 246, 0.3)'),
-                            hoverinfo='none'
-                        ))
-                    
-                    # Node trace
-                    node_x = []
-                    node_y = []
-                    node_text = []
-                    node_size = []
-                    node_color = []
-                    
-                    for node in G.nodes():
-                        node_x.append(pos[node][0])
-                        node_y.append(pos[node][1])
-                        node_text.append(node)
-                        
-                        degree = G.degree(node)
-                        node_size.append(20 + degree * 5)
-                        
-                        if node == entity:
-                            node_color.append('red')
-                        elif degree > 3:
-                            node_color.append('#3B82F6')
-                        else:
-                            node_color.append('#9CA3AF')
-                    
-                    node_trace = go.Scatter(
-                        x=node_x,
-                        y=node_y,
-                        mode='markers+text',
-                        text=node_text,
-                        textposition="top center",
-                        textfont=dict(size=10),
-                        marker=dict(
-                            size=node_size,
-                            color=node_color,
-                            line=dict(width=2, color='white')
-                        ),
-                        hoverinfo='text'
-                    )
-                    
-                    fig = go.Figure(
-                        data=edge_trace + [node_trace],
-                        layout=go.Layout(
-                            showlegend=False,
-                            hovermode='closest',
-                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                            height=500,
-                            margin=dict(l=0, r=0, t=0, b=0),
-                            plot_bgcolor='white'
-                        )
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Graph stats
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Nodes", G.number_of_nodes())
-                    with col2:
-                        st.metric("Edges", G.number_of_edges())
-                    with col3:
-                        st.metric("Density", f"{nx.density(G):.3f}")
-                else:
-                    st.warning("No graph data available")
-            except Exception as e:
-                st.error(f"Error: {e}")
-    else:
-        # Static preview
-        st.image("https://images.ctfassets.net/c1zhnszcah7h/1Ox8gzD8p5tKAt1jNYKC0g/52ba886bca190a8a52b1e4d03e98483d/graph-visualization.png", 
-                 caption="Knowledge Graph Preview")
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Quick stats in right column
-    st.markdown('<div class="professional-card">', unsafe_allow_html=True)
-    st.markdown("### 📊 Quick Statistics")
-    stat_col1, stat_col2 = st.columns(2)
-    with stat_col1:
-        st.write("**Top Senders:**")
-        st.write("• Jeff Dasovich (47)")
-        st.write("• Kenneth Lay (42)")
-        st.write("• Jeff Skilling (38)")
-    with stat_col2:
-        st.write("**Key Topics:**")
-        st.write("• Energy Trading")
-        st.write("• Regulatory")
-        st.write("• Accounting")
-    st.markdown('</div>', unsafe_allow_html=True)
+    # New search button
+    if st.button("← New Search"):
+        st.session_state.searched = False
+        st.session_state.search_query = ""
+        st.rerun()
 
-# --- 9. BOTTOM SECTION - ANALYTICS ---
-st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-st.markdown('<div class="professional-card">', unsafe_allow_html=True)
-
-chart_col1, chart_col2 = st.columns(2)
-
-with chart_col1:
-    st.markdown("#### 📊 Top Communicators")
-    df_senders = pd.DataFrame({
-        'Person': ['Jeff Dasovich', 'Kenneth Lay', 'Jeff Skilling', 'Sherron Watkins', 'Greg Whalley'],
-        'Messages': [47, 42, 38, 25, 22]
-    })
-    fig = px.bar(df_senders, x='Person', y='Messages', color='Messages',
-                 color_continuous_scale='Blues')
-    fig.update_layout(height=300, margin=dict(l=20, r=20, t=30, b=20))
-    st.plotly_chart(fig, use_container_width=True)
-
-with chart_col2:
-    st.markdown("#### 📈 Communication Timeline")
-    dates = pd.date_range(start='2001-01-01', periods=20, freq='W')
-    values = np.random.randint(50, 200, size=20)
-    df_timeline = pd.DataFrame({'Date': dates, 'Volume': values})
-    fig = px.line(df_timeline, x='Date', y='Volume', markers=True)
-    fig.update_layout(height=300, margin=dict(l=20, r=20, t=30, b=20))
-    st.plotly_chart(fig, use_container_width=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# --- 10. FOOTER ---
-st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-footer_col1, footer_col2, footer_col3 = st.columns([1, 2, 1])
-with footer_col2:
+else:
+    # Empty state - only shown before search
     st.markdown("""
-    <div style='text-align: center; color: #6B7280; font-size: 0.8rem;'>
-        <p>© 2024 Enterprise Knowledge Graph | Infosys Presentation | Powered by Neo4j, Pinecone, LangChain</p>
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 3rem; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+        <h3 style="font-weight: 400; color: #374151; margin-bottom: 0.5rem;">Enter a search query</h3>
+        <p style="color: #9ca3af;">Search for people, topics, or communications to explore the knowledge graph</p>
     </div>
     """, unsafe_allow_html=True)
+
+# --- Footer ---
+st.markdown("""
+<div class="footer">
+    Enron Intelligence · Simple · Clean · Professional
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
