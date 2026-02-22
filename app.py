@@ -22,7 +22,7 @@ from langchain_pinecone import PineconeVectorStore
 
 # --- 1. ENTERPRISE DASHBOARD CSS ---
 st.set_page_config(
-    page_title="AURUM INTELLIGENCE",
+    page_title="AI KNOWLEDGE GRAPH BUILDER",
     page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="collapsed"
