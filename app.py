@@ -316,4 +316,4 @@ with col4:
 
 # --- 11. FOOTER ---
 st.divider()
-st.caption("© 2024 Enterprise Knowledge Graph | Infosys Presentation")#   F o r c e   r e d e p l o y   0 2 / 2 2 / 2 0 2 6   1 8 : 3 8 : 1 3 
+st.caption("© 2024 Enterprise Knowledge Graph | Infosys Presentation")
