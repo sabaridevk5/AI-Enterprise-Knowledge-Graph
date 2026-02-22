@@ -1,170 +1,103 @@
 
 
 ```markdown
-<div align="center">
+# 🛡️ AI-Powered Enterprise Knowledge Graph for Semantic Search
 
-# 🌌 AURUM NEXUS: COGNITIVE GRAPH ENGINE
-### *Next-Gen Enterprise Knowledge Discovery & Hybrid RAG*
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-FF4B4B.svg)
+![Neo4j](https://img.shields.io/badge/Neo4j-Graph_DB-018bff.svg)
+![Pinecone](https://img.shields.io/badge/Pinecone-Vector_DB-000000.svg)
+![LangChain](https://img.shields.io/badge/LangChain-AI-1C3C3C.svg)
 
-[![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
-[![Neo4j](https://img.shields.io/badge/Neo4j-018BFF?style=for-the-badge&logo=neo4j&logoColor=white)](https://neo4j.com)
-[![Pinecone](https://img.shields.io/badge/Pinecone-000000?style=for-the-badge&logo=pinecone&logoColor=white)](https://pinecone.io)
-[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain.com)
+## 📌 Project Overview
+This project is an advanced **Hybrid Retrieval-Augmented Generation (RAG) System** designed to analyze corporate communications (specifically utilizing the Enron Email Corpus). It bridges the gap between unstructured text data and structured relationship mapping. 
 
-**Neural Relationship Mapping · Semantic Vector Intelligence · Production-Ready Architecture**
+By combining **Semantic Search** (via Pinecone vector embeddings) with **Graph Discovery** (via Neo4j), this intelligence portal allows investigators to not only find specific conversations based on context but also instantly visualize the network topology of the entities involved.
 
-[🚀 Launch Intelligence Portal](https://your-app.streamlit.app) • [📄 Project Documentation](docs/) • [🛡️ Security Protocol](SECURITY.md)
+## ✨ Key Features
+* **Hybrid Intelligence:** Merges Vector similarities (what was said) with Graph topologies (who talks to whom).
+* **Semantic Vector Retrieval:** Uses HuggingFace `all-MiniLM-L6-v2` embeddings stored in Pinecone to retrieve highly relevant emails based on conversational context, not just keyword matching.
+* **Dynamic Network Topology:** Interactive Knowledge Graph powered by NetworkX and Plotly. The graph dynamically rebuilds itself to center around the entities mentioned in your search query.
+* **AI Context Extractor:** Automatically highlights the primary investigative context of retrieved documents.
+* **Enterprise-Grade UI:** A sleek, responsive, and secure command-center dashboard built with Streamlit.
 
-</div>
+## 🏗️ Architecture & Pipeline
+The project is built on a structured data engineering pipeline:
+1. **Milestone 1 (Preprocessing):** Cleaning, parsing, and formatting raw Enron email data into structured datasets.
+2. **Milestone 2 (Graph Build):** Extracting entities (Sender, Receiver) and relationships to populate the Neo4j Graph Database.
+3. **Milestone 3 & 4 (Vectorization):** Generating semantic embeddings for email bodies and pushing them to the Pinecone Cloud Vector index.
+4. **Application Layer:** A Streamlit web application acting as the unified interface for both databases.
 
----
-
-## 💎 Executive Overview
-
-**Aurum Nexus** is a production-grade **Cognitive Intelligence Platform** designed to dismantle information silos within large-scale corporate communication datasets. By unifying **Unstructured Semantic Search** with **Structured Graph Topology**, it provides a 360-degree view of organizational behavior, influence, and risk.
-
-Utilizing the foundational Enron corpus, Aurum Nexus demonstrates a **Hybrid RAG architecture** that goes beyond simple text retrieval to provide contextual relationship discovery in real-time.
-
-### 📈 Strategic Business Impact
-
-| Capability | Transformation | Result |
-| :--- | :--- | :--- |
-| **Discovery Velocity** | From manual keyword searching to semantic AI intent | **70% Faster Investigations** |
-| **Network Visibility** | Immediate mapping of "hidden" influence and clusters | **Total Transparency** |
-| **Risk Mitigation** | Automated detection of anomalous communication spikes | **Proactive Compliance** |
-| **Data Fidelity** | Verified relationship paths via Graph Neural Discovery | **Higher Accuracy** |
-
----
-
-## 🛠️ The Technology Stack
-
-| Layer | Component | Implementation |
-| :--- | :--- | :--- |
-| **Intelligence** | **Hybrid RAG Engine** | Merges Pinecone Vector similarities with Neo4j Graph traversals. |
-| **Search** | **Semantic Vector DB** | High-performance indexing via **Pinecone** using `all-MiniLM-L6-v2`. |
-| **Knowledge** | **Graph Neural DB** | Relationship persistence and pathfinding via **Neo4j AuraDB**. |
-| **Interface** | **SaaS Dashboard** | Modern, high-density UI built on **Streamlit** and **Plotly**. |
-| **Analytics** | **Topology Engine** | Real-time centrality and influence scoring via **NetworkX**. |
-
----
-
-## 🏗️ System Architecture
-
-```mermaid
-graph TD
-    subgraph "1. Ingestion & Transformation"
-        A[Raw Corporate Data] --> B[Clean & Tokenize]
-        B --> C{Orchestrator}
-    end
-
-    subgraph "2. The Dual-Core Engine"
-        C -->|Embeddings| D[(Pinecone Vector DB)]
-        C -->|Entities/Edges| E[(Neo4j Graph DB)]
-    end
-
-    subgraph "3. Cognitive Layer"
-        D -->|Vector Retrieval| F[LangChain Hybrid RAG]
-        E -->|Topology Mapping| F
-        F --> G[LLM Context Synthesis]
-    end
-
-    subgraph "4. Executive Interface"
-        G --> H[Streamlit Command Center]
-        H --> I[Dynamic Graph View]
-        H --> J[Semantic Feed]
-    end
-
-    style D fill:#4C1D95,stroke:#fff,color:#fff
-    style E fill:#1E3A8A,stroke:#fff,color:#fff
-    style H fill:#064E3B,stroke:#fff,color:#fff
+## 📂 Repository Structure
+```text
+├── data/                       # Processed Enron CSV/JSON datasets
+├── src/                        # Data engineering pipeline scripts
+│   ├── milestone1_preprocessing.py
+│   ├── milestone2_graph_build.py
+│   ├── milestone3_semantic_search.py
+│   └── m4_upload_to_pinecone.py
+├── app.py                      # Main Streamlit dashboard application
+├── requirements.txt            # Python dependencies
+└── README.md                   # Project documentation
 
 ```
 
----
+## 🚀 Deployment & Installation
 
-## ✨ Core Enterprise Features
-
-### 🧠 **Context-Aware Hybrid RAG**
-
-Bypasses the "hallucination" limits of standard AI by grounding responses in verified Graph relationships and Vector similarities.
-
-### 🕸️ **Neural Topology Visualization**
-
-An interactive graph that **automatically re-centers** based on your query. Nodes scale by **Influence Score** (Degree Centrality), and edges represent the strength of communication.
-
-### 🛡️ **Zero-Trust Security Framework**
-
-* **Credential Isolation:** No hardcoded keys.
-* **Vaulted Secrets:** Managed via Streamlit Advanced Cloud Secrets.
-* **Encrypted Transport:** TLS 1.3 encryption for all DB handshakes.
-
----
-
-## 📂 Repository Blueprint
+**1. Clone the repository**
 
 ```bash
-ai-knowledge-graph/
-├── 📂 src/
-│   ├── app.py                     # Main Intelligence Dashboard
-│   ├── milestone1_preprocessing.py # Medallion Data Cleaning
-│   ├── milestone2_graph_build.py   # Neo4j Entity Mapping
-│   ├── m4_upload_to_pinecone.py    # Vector Indexing Logic
-├── 📂 data/
-│   └── processed_emails.csv        # Production-ready dataset
-├── 📄 requirements.txt             # Dependency pinning
-└── 📄 README.md                    # Project Documentation
+git clone [https://github.com/yourusername/AI-Enterprise-Knowledge-Graph.git](https://github.com/yourusername/AI-Enterprise-Knowledge-Graph.git)
+cd AI-Enterprise-Knowledge-Graph
 
 ```
 
----
-
-## 🚀 Deployment Protocol
-
-### **Cloud (Production)**
-
-1. **Fork** this repository to your GitHub account.
-2. Connect to **Streamlit Community Cloud**.
-3. Add the following **Secrets** in the Cloud Console:
-```toml
-PINECONE_API_KEY = "your-key"
-NEO4J_URI = "bolt+s://..."
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "..."
-
-```
-
-
-
-### **Local (Development)**
+**2. Install dependencies**
 
 ```bash
-# Setup
-git clone [https://github.com/yourusername/aurum-nexus.git](https://github.com/yourusername/aurum-nexus.git)
 pip install -r requirements.txt
 
-# Run
-streamlit run src/app.py
+```
+
+**3. Environment & Cloud Secrets Management**
+To comply with enterprise security standards, API keys and database URIs are strictly excluded from the codebase.
+
+* **For Cloud Deployment (Streamlit Community Cloud):** Navigate to your app's **Advanced Settings > Secrets** and securely inject your environment variables using the TOML format:
+```toml
+PINECONE_API_KEY = "your_pinecone_key_here"
+NEO4J_URI = "bolt+s://your_neo4j_uri"
+NEO4J_USER = "neo4j"
+NEO4J_PASSWORD = "your_neo4j_password"
 
 ```
 
+
+* **For Local Execution:** The application is configured to safely default to a local/simulation mode if cloud secrets are not detected in the environment, preventing accidental credential leaks during testing.
+
+**4. Run the Application**
+
+```bash
+streamlit run app.py
+
+```
+
+## 🔍 Usage Examples
+
+Once the dashboard is running, try entering the following investigative queries into the search bar:
+
+* *"natural gas market analysis and trading"*
+* *"accounting irregularities sherron watkins"*
+* *"california energy crisis regulations"*
+
+## 🛠️ Technology Stack
+
+* **Frontend & Visualization:** Streamlit, Plotly, HTML/CSS
+* **AI/NLP:** LangChain, HuggingFace Transformers
+* **Databases:** Pinecone (Vector Database), Neo4j AuraDB (Graph Database)
+* **Data Processing:** Pandas, NumPy, NetworkX
+
 ---
 
-## 🎯 Investigative Query Patterns
+*Developed for Enterprise Analytics & Information Retrieval.*
 
-Unlock the platform's potential with these high-intent query patterns:
-
-* **Executive Focus:** *"What did Jeff Dasovich discuss regarding energy trading regulations?"*
-* **Risk Detection:** *"Detect anomalies in accounting discussions during Q3 2001."*
-* **Influence Check:** *"Who are the primary information brokers for Sherron Watkins?"*
-
----
-
-<div align="center">
-
-**Developed for the Infosys Enterprise Intelligence Review** *Empowering Data-Driven Decision Making through Cognitive Graphs*
-
-© 2026 Aurum Nexus | Sabari (Integrated MCA)
-
-</div>
-
+```
