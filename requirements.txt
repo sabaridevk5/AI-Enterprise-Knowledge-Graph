@@ -1,0 +1,9 @@
+streamlit
+pandas
+numpy
+langchain-huggingface
+langchain-pinecone
+langchain-neo4j
+plotly
+networkx
+sentence-transformers
