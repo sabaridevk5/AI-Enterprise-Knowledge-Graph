@@ -64,13 +64,13 @@ def load_enterprise_systems():
     except Exception as e:
         systems["status"]["pinecone"] = f"❌ {str(e)[:50]}"
     
-    # --- CONNECT TO NEO4J - USING WORKING CONNECTION FROM TEST ---
+    # --- CONNECT TO NEO4J - FIXED VERSION (NO DATABASE SPECIFIED) ---
     try:
         from neo4j import GraphDatabase
         
         st.sidebar.info("🔄 Testing Neo4j connection...")
         
-        # Test connection exactly like the test script
+        # Test connection - don't specify database
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
         driver.verify_connectivity()
         
@@ -82,12 +82,11 @@ def load_enterprise_systems():
         
         driver.close()
         
-        # Now create the LangChain graph
+        # Create LangChain graph - WITHOUT database parameter
         g_store = Neo4jGraph(
             url=NEO4J_URI, 
             username=NEO4J_USER, 
-            password=NEO4J_PASSWORD,
-            database="neo4j"
+            password=NEO4J_PASSWORD
         )
         
         systems["graph"] = g_store
@@ -274,6 +273,8 @@ with st.sidebar:
     
     if graph is None:
         st.warning("⚠️ Running in Demo Mode - Graph queries will show sample data")
+    else:
+        st.success("✅ Connected to Neo4j - Live Data")
     
     st.caption("Enterprise Knowledge Graph - Infosys Presentation")
     st.caption(f"Session started: {time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -286,7 +287,7 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     query = st.text_input("Enter your query:", 
-                         placeholder="e.g., 'What did Mark discuss about the energy trading regulations?'",
+                         placeholder="e.g., 'natural gas trading' or 'energy market analysis'",
                          key="main_query")
 
 with col2:
@@ -313,7 +314,7 @@ if query:
             st.subheader("🕸️ Knowledge Graph Connections")
             
             if graph is not None:
-                with st.spinner("Querying graph..."):
+                with st.spinner("Querying Neo4j..."):
                     try:
                         cypher_query = """
                         MATCH (p:Person)
@@ -341,7 +342,19 @@ if query:
             else:
                 show_sample_graph()
 
-# --- 7. ANALYTICS SECTION ---
+# --- 7. QUICK ACTIONS ---
+st.divider()
+st.subheader("🔍 Try These Sample Queries:")
+
+cols = st.columns(4)
+queries = ["natural gas trading", "energy market analysis", "jeff dasovich", "accounting concerns"]
+for i, q in enumerate(queries):
+    with cols[i]:
+        if st.button(f"📊 {q}", use_container_width=True):
+            st.session_state.main_query = q
+            st.rerun()
+
+# --- 8. ANALYTICS SECTION ---
 st.divider()
 st.header("📊 Enterprise Insights")
 
@@ -366,6 +379,6 @@ insights = [
 for insight in insights:
     st.info(insight)
 
-# --- 8. FOOTER ---
+# --- 9. FOOTER ---
 st.divider()
-st.caption("© 2026 Enterprise Knowledge Graph Builder | All Rights Reserved | Prepared for Infosys Review")
+st.caption("© 2024 Enterprise Knowledge Graph Builder | All Rights Reserved | Prepared for Infosys Review")
