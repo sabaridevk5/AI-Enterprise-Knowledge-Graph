@@ -1,4 +1,4 @@
-# app.py - ENTERPRISE DASHBOARD
+# app.py - ENTERPRISE DASHBOARD with REAL Enron Data
 
 import sys
 import os
@@ -500,6 +500,16 @@ else:
 
 PINECONE_INDEX = "enron-enterprise-kg"
 
+# Neo4j credentials (if available)
+if "NEO4J_URI" in st.secrets:
+    NEO4J_URI = st.secrets["NEO4J_URI"]
+    NEO4J_USER = st.secrets["NEO4J_USER"]
+    NEO4J_PASSWORD = st.secrets["NEO4J_PASSWORD"]
+else:
+    NEO4J_URI = os.getenv("NEO4J_URI", "neo4j+s://0be473b6.databases.neo4j.io")
+    NEO4J_USER = os.getenv("NEO4J_USER", "0be473b6")
+    NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "9m7fKj7WzZmVAMkithV9OkhzTzmBlPfQOye4Oyyvl70")
+
 # --- 3. SESSION STATE ---
 if 'searched' not in st.session_state:
     st.session_state.searched = False
@@ -516,17 +526,39 @@ if 'hint_index' not in st.session_state:
 # --- 4. SYSTEM INIT ---
 @st.cache_resource
 def load_systems():
-    systems = {"model": None}
+    systems = {"model": None, "pinecone": None, "neo4j": None}
+    
+    # Load sentence transformer model
     try:
-        # Load sentence transformer model directly
         model = SentenceTransformer('all-MiniLM-L6-v2')
         systems["model"] = model
+        st.sidebar.success("✅ Model loaded")
     except Exception as e:
-        st.error(f"Failed to load model: {e}")
+        st.sidebar.error(f"❌ Model failed: {e}")
+    
+    # Initialize Pinecone
+    try:
+        pc = Pinecone(api_key=os.environ['PINECONE_API_KEY'])
+        systems["pinecone"] = pc
+        st.sidebar.success("✅ Pinecone connected")
+    except Exception as e:
+        st.sidebar.error(f"❌ Pinecone failed: {e}")
+    
+    # Initialize Neo4j (optional)
+    try:
+        driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        driver.verify_connectivity()
+        systems["neo4j"] = driver
+        st.sidebar.success("✅ Neo4j connected")
+    except Exception as e:
+        st.sidebar.info("ℹ️ Neo4j in demo mode")
+    
     return systems
 
 systems = load_systems()
 model = systems["model"]
+pinecone_client = systems["pinecone"]
+neo4j_driver = systems["neo4j"]
 
 # --- 5. ROTATING HINTS ---
 hints = [
@@ -547,6 +579,9 @@ def detect_entity(results):
         "kenneth.lay": ["kenneth", "lay", "kenneth lay", "ken lay"],
         "jeff.skilling": ["jeff skilling", "skilling"],
         "sherron.watkins": ["sherron", "watkins", "sherron watkins"],
+        "andy.zipper": ["andy", "zipper", "andy zipper"],
+        "greg.whalley": ["greg", "whalley", "greg whalley"],
+        "john.arnold": ["john", "arnold", "john arnold"]
     }
     
     scores = {e: 0 for e in entity_keywords}
@@ -565,6 +600,44 @@ def detect_entity(results):
     if max(scores.values()) > 0:
         return max(scores.items(), key=lambda x: x[1])[0]
     return None
+
+# --- 7. FETCH NEO4J GRAPH DATA ---
+def get_graph_data(entity_name=None):
+    G = nx.Graph()
+    
+    if neo4j_driver and entity_name:
+        try:
+            with neo4j_driver.session() as session:
+                query = """
+                MATCH (p:Person {email: $email})-[r:SENT]-(connected)
+                RETURN p.email as source, connected.email as target, count(r) as weight
+                LIMIT 50
+                """
+                result = session.run(query, email=entity_name)
+                
+                for record in result:
+                    G.add_edge(
+                        record['source'],
+                        record['target'],
+                        weight=record.get('weight', 1)
+                    )
+        except:
+            pass
+    
+    # Fallback to demo graph if no data
+    if len(G.nodes()) == 0:
+        demo_edges = [
+            ("jeff.dasovich@enron.com", "kenneth.lay@enron.com", 47),
+            ("jeff.dasovich@enron.com", "jeff.skilling@enron.com", 38),
+            ("kenneth.lay@enron.com", "sherron.watkins@enron.com", 25),
+            ("jeff.skilling@enron.com", "greg.whalley@enron.com", 22),
+            ("kenneth.lay@enron.com", "andy.zipper@enron.com", 18),
+            ("sherron.watkins@enron.com", "mark.haedicke@enron.com", 15),
+        ]
+        for s, t, w in demo_edges:
+            G.add_edge(s, t, weight=w)
+    
+    return G
 
 # ========== DASHBOARD ==========
 st.markdown('<div class="dashboard">', unsafe_allow_html=True)
@@ -616,10 +689,9 @@ st.markdown('<div class="search-title">🔍 ENTERPRISE SEARCH</div>', unsafe_all
 col1, col2 = st.columns([5, 1])
 with col1:
     query = st.text_input(
-        "",
+        "Search",  # Non-empty label to avoid warning
         placeholder="Search communications... e.g., 'what did sherron watkins say about accounting'",
-        key="search",
-        label_visibility="collapsed"
+        key="search"
     )
 with col2:
     search = st.button("ANALYZE", use_container_width=True)
@@ -645,47 +717,65 @@ if search and query:
     st.session_state.searched = True
     st.session_state.query = query
     
-    # Sample results based on query
-    if 'watkins' in query.lower() or 'sherron' in query.lower():
-        st.session_state.results = [
-            {
-                'from': 'sherron.watkins@enron.com',
-                'to': 'kenneth.lay@enron.com',
-                'subject': 'URGENT: Accounting Concerns',
-                'date': '2001-08-22',
-                'content': 'I have serious concerns about our accounting practices. This could be a major problem for the company.',
-                'score': 0.98
-            },
-            {
-                'from': 'sherron.watkins@enron.com',
-                'to': 'legal@enron.com',
-                'subject': 'Legal Meeting',
-                'date': '2001-07-10',
-                'content': 'Met with legal counsel to discuss the off-balance-sheet entities. The risk is significant.',
-                'score': 0.92
-            }
-        ]
-    else:
-        st.session_state.results = [
-            {
-                'from': 'jeff.dasovich@enron.com',
-                'to': 'kenneth.lay@enron.com',
-                'subject': 'California Energy Market Analysis',
-                'date': '2001-05-15',
-                'content': 'Ken, the California market is showing significant volatility. Trading opportunities are emerging but regulatory scrutiny is increasing.',
-                'score': 0.98
-            },
-            {
-                'from': 'sherron.watkins@enron.com',
-                'to': 'kenneth.lay@enron.com',
-                'subject': 'URGENT: Accounting Concerns',
-                'date': '2001-08-22',
-                'content': 'I have serious concerns about our accounting practices. This could be a major problem for the company.',
-                'score': 0.96
-            }
-        ]
+    # ACTUALLY QUERY PINECONE FOR REAL ENRON DATA
+    with st.spinner("🔍 Searching 500+ Enron emails..."):
+        try:
+            if model and pinecone_client:
+                # Get the index
+                index = pinecone_client.Index(PINECONE_INDEX)
+                
+                # Encode the query
+                query_embedding = model.encode(query).tolist()
+                
+                # Search Pinecone
+                pinecone_results = index.query(
+                    vector=query_embedding,
+                    top_k=5,
+                    include_metadata=True
+                )
+                
+                # Format results
+                results = []
+                for match in pinecone_results['matches']:
+                    metadata = match['metadata']
+                    results.append({
+                        'from': metadata.get('From', 'Unknown'),
+                        'to': metadata.get('To', 'Unknown'),
+                        'subject': metadata.get('Subject', 'No Subject'),
+                        'date': metadata.get('Date', 'Unknown'),
+                        'content': metadata.get('Body', '')[:500],
+                        'score': match['score']
+                    })
+                
+                st.session_state.results = results
+                
+            else:
+                # Fallback if Pinecone not available
+                st.warning("Pinecone not connected. Using sample data.")
+                st.session_state.results = [
+                    {
+                        'from': 'jeff.dasovich@enron.com',
+                        'to': 'kenneth.lay@enron.com',
+                        'subject': 'California Energy Market Analysis',
+                        'date': '2001-05-15',
+                        'content': 'Ken, the California market is showing significant volatility. Trading opportunities are emerging but regulatory scrutiny is increasing.',
+                        'score': 0.98
+                    },
+                    {
+                        'from': 'sherron.watkins@enron.com',
+                        'to': 'kenneth.lay@enron.com',
+                        'subject': 'URGENT: Accounting Concerns',
+                        'date': '2001-08-22',
+                        'content': 'I have serious concerns about our accounting practices. This could be a major problem for the company.',
+                        'score': 0.96
+                    }
+                ]
+                
+        except Exception as e:
+            st.error(f"Search error: {e}")
+            st.session_state.results = []
     
-    # Detect entity
+    # Detect entity from results
     st.session_state.entity = detect_entity(st.session_state.results)
     st.rerun()
 
@@ -705,25 +795,25 @@ if st.session_state.searched and st.session_state.results:
     st.markdown('<div class="card-body">', unsafe_allow_html=True)
     
     for r in st.session_state.results:
-        avatar = r['from'][0].upper() if r['from'] else '?'
+        avatar = r['from'][0].upper() if r['from'] and r['from'] != 'Unknown' else '?'
         st.markdown(f"""
         <div class="result-item">
             <div class="result-header">
                 <div class="result-sender">
                     <div class="avatar">{avatar}</div>
                     <div class="sender-info">
-                        <span class="sender-name">{r['from'].split('@')[0]}</span>
+                        <span class="sender-name">{r['from'].split('@')[0] if '@' in r['from'] else r['from']}</span>
                         <span class="sender-email">{r['from']}</span>
                     </div>
                 </div>
-                <span class="result-date">{r['date'][:10]}</span>
+                <span class="result-date">{r['date'][:10] if r['date'] else 'Unknown'}</span>
             </div>
             <div class="result-subject">{r['subject']}</div>
-            <div class="result-preview">{r['content'][:150]}...</div>
+            <div class="result-preview">{r['content'][:200]}...</div>
             <div class="result-meta">
                 <span class="meta-tag">📊 {r['score']*100:.0f}% match</span>
                 <span class="meta-tag">📎 4 connections</span>
-                <span class="meta-tag">📅 {r['date'][:10]}</span>
+                <span class="meta-tag">📅 {r['date'][:10] if r['date'] else 'Unknown'}</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -759,6 +849,10 @@ if st.session_state.searched and st.session_state.results:
     # --- RIGHT COLUMN - Graph & Analytics ---
     st.markdown('<div>', unsafe_allow_html=True)
     
+    # Get graph data (with detected entity if available)
+    graph_entity = st.session_state.entity if st.session_state.entity else st.session_state.query.split()[0] + "@enron.com"
+    G = get_graph_data(graph_entity)
+    
     # Graph Card
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("""
@@ -768,19 +862,6 @@ if st.session_state.searched and st.session_state.results:
     </div>
     """, unsafe_allow_html=True)
     st.markdown('<div class="card-body">', unsafe_allow_html=True)
-    
-    # Create graph
-    G = nx.Graph()
-    edges = [
-        ("jeff.dasovich", "kenneth.lay", 47),
-        ("jeff.dasovich", "jeff.skilling", 38),
-        ("kenneth.lay", "sherron.watkins", 25),
-        ("jeff.skilling", "greg.whalley", 22),
-        ("kenneth.lay", "andy.zipper", 18),
-    ]
-    
-    for s, t, w in edges:
-        G.add_edge(s, t, weight=w)
     
     if len(G.nodes()) > 0:
         pos = nx.spring_layout(G, k=2, iterations=50)
@@ -804,7 +885,7 @@ if st.session_state.searched and st.session_state.results:
         for node in G.nodes():
             node_x.append(pos[node][0])
             node_y.append(pos[node][1])
-            node_text.append(node)
+            node_text.append(node.split('@')[0])
             
             if st.session_state.entity and node == st.session_state.entity:
                 node_color.append('#ef4444')
@@ -839,8 +920,8 @@ if st.session_state.searched and st.session_state.results:
     st.markdown('<div class="stats-grid">', unsafe_allow_html=True)
     
     stats = [
-        {"label": "Network Size", "value": "7 nodes", "desc": "9 connections"},
-        {"label": "Density", "value": "0.42", "desc": "moderate"},
+        {"label": "Network Size", "value": f"{len(G.nodes())} nodes", "desc": f"{len(G.edges())} connections"},
+        {"label": "Density", "value": f"{nx.density(G):.2f}", "desc": "moderate" if nx.density(G) > 0.3 else "sparse"},
         {"label": "Centralization", "value": "0.68", "desc": "hub detected"},
         {"label": "Avg Path", "value": "2.4", "desc": "tight network"},
     ]
@@ -859,19 +940,22 @@ if st.session_state.searched and st.session_state.results:
     # Entity Panel
     if st.session_state.entity:
         entity_data = {
-            "jeff.dasovich": {"role": "Gov. Affairs", "influence": "92%", "topics": "Energy Trading"},
-            "kenneth.lay": {"role": "CEO", "influence": "98%", "topics": "Executive"},
-            "jeff.skilling": {"role": "COO", "influence": "95%", "topics": "Trading"},
-            "sherron.watkins": {"role": "VP", "influence": "88%", "topics": "Accounting"},
+            "jeff.dasovich@enron.com": {"role": "Gov. Affairs", "influence": "92%", "topics": "Energy Trading"},
+            "kenneth.lay@enron.com": {"role": "CEO", "influence": "98%", "topics": "Executive"},
+            "jeff.skilling@enron.com": {"role": "COO", "influence": "95%", "topics": "Trading"},
+            "sherron.watkins@enron.com": {"role": "VP", "influence": "88%", "topics": "Accounting"},
+            "andy.zipper@enron.com": {"role": "CEO Europe", "influence": "82%", "topics": "Operations"},
+            "greg.whalley@enron.com": {"role": "President", "influence": "86%", "topics": "Trading"},
+            "john.arnold@enron.com": {"role": "Trader", "influence": "78%", "topics": "Natural Gas"},
         }
         
-        info = entity_data.get(st.session_state.entity, {})
+        info = entity_data.get(st.session_state.entity, {"role": "Employee", "influence": "50%", "topics": "General"})
         st.markdown(f"""
         <div class="entity-panel">
             <h4>👤 Entity Intelligence</h4>
             <div class="entity-row">
                 <span class="entity-label">Person</span>
-                <span class="entity-value">{st.session_state.entity}</span>
+                <span class="entity-value">{st.session_state.entity.split('@')[0] if '@' in st.session_state.entity else st.session_state.entity}</span>
             </div>
             <div class="entity-row">
                 <span class="entity-label">Role</span>
