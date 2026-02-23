@@ -257,7 +257,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="search-section"><div class="search-title">🔍 ENTERPRISE SEARCH</div>', unsafe_allow_html=True)
+# st.markdown('<div class="search-section"><div class="search-title">🔍 ENTERPRISE SEARCH</div>', unsafe_allow_html=True)
 col1, col2 = st.columns([5, 1])
 with col1: query = st.text_input("Search", placeholder="Search communications... e.g., 'what did sherron watkins say about accounting'", key="search", label_visibility="collapsed")
 with col2: search = st.button("ANALYZE", use_container_width=True)
