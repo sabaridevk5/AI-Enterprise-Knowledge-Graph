@@ -1,19 +1,31 @@
+# Core
 streamlit==1.29.0
 pandas==2.0.3
 numpy==1.24.3
-langchain==0.0.340
-langchain-community==0.0.10
-langchain-huggingface==0.0.1
-langchain-pinecone==0.0.1
-langchain-neo4j==0.0.1
-pinecone==3.0.0  # Changed from pinecone-client
+python-dotenv==1.0.0
+
+# Visualization
+plotly==5.18.0
+networkx==3.1
+
+# ML/NLP
 sentence-transformers==2.2.2
 torch==2.1.0
 transformers==4.35.0
-plotly==5.18.0
-networkx==3.1
-python-dotenv==1.0.0
-faiss-cpu==1.7.4
-huggingface-hub==0.19.4
 scikit-learn==1.3.0
+faiss-cpu==1.7.4
+
+# LangChain (specific versions that work together)
+langchain==0.1.0
+langchain-community==0.1.0
+langchain-core==0.1.0
+langchain-huggingface==0.0.1
+langchain-pinecone==0.0.1
+langchain-neo4j==0.0.1
+
+# Databases
+pinecone-client==2.2.4  # Use older but stable version
 neo4j==5.14.1
+
+# Utilities
+huggingface-hub==0.19.4
