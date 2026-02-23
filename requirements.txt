@@ -14,13 +14,13 @@ torch==2.5.1
 transformers==4.46.3
 scikit-learn==1.5.2
 
-# LangChain - Using versions that support Python 3.13
+# LangChain - Core only (no pinecone/neo4j wrappers)
 langchain==0.3.0
 langchain-community==0.3.0
 langchain-core==0.3.0
 langchain-huggingface==0.1.0
 
-# Databases - REMOVED problematic packages
+# Databases - Direct SDKs (not LangChain wrappers)
 pinecone-client==5.0.1
 neo4j==5.26.0
 

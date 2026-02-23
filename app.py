@@ -16,9 +16,10 @@ from datetime import datetime
 import re
 from collections import Counter
 
-# LangChain imports
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_pinecone import PineconeVectorStore
+# Direct imports (no LangChain wrappers)
+from sentence_transformers import SentenceTransformer
+from pinecone import Pinecone
+from neo4j import GraphDatabase
 
 # --- 1. ENTERPRISE DASHBOARD CSS ---
 st.set_page_config(
@@ -515,17 +516,17 @@ if 'hint_index' not in st.session_state:
 # --- 4. SYSTEM INIT ---
 @st.cache_resource
 def load_systems():
-    systems = {"vectorstore": None}
+    systems = {"model": None}
     try:
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        v_store = PineconeVectorStore(index_name=PINECONE_INDEX, embedding=embeddings)
-        systems["vectorstore"] = v_store
-    except:
-        pass
+        # Load sentence transformer model directly
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+        systems["model"] = model
+    except Exception as e:
+        st.error(f"Failed to load model: {e}")
     return systems
 
 systems = load_systems()
-vectorstore = systems["vectorstore"]
+model = systems["model"]
 
 # --- 5. ROTATING HINTS ---
 hints = [
@@ -644,89 +645,45 @@ if search and query:
     st.session_state.searched = True
     st.session_state.query = query
     
-    # Get results
-    if vectorstore:
-        try:
-            docs = vectorstore.similarity_search(query, k=5)
-            st.session_state.results = [
-                {
-                    'from': d.metadata.get('from', 'Unknown'),
-                    'to': d.metadata.get('to', 'Unknown'),
-                    'subject': d.metadata.get('subject', 'No Subject'),
-                    'date': d.metadata.get('date', 'Unknown'),
-                    'content': d.page_content,
-                    'score': round(0.85 + (0.1 * np.random.random()), 2)
-                }
-                for d in docs
-            ]
-        except:
-            # Sample results
-            st.session_state.results = [
-                {
-                    'from': 'jeff.dasovich@enron.com',
-                    'to': 'kenneth.lay@enron.com',
-                    'subject': 'California Energy Market Analysis',
-                    'date': '2001-05-15',
-                    'content': 'Ken, the California market is showing significant volatility. Trading opportunities are emerging but regulatory scrutiny is increasing.',
-                    'score': 0.98
-                },
-                {
-                    'from': 'sherron.watkins@enron.com',
-                    'to': 'kenneth.lay@enron.com',
-                    'subject': 'URGENT: Accounting Concerns',
-                    'date': '2001-08-22',
-                    'content': 'I have serious concerns about our accounting practices. This could be a major problem for the company.',
-                    'score': 0.96
-                },
-                {
-                    'from': 'jeff.skilling@enron.com',
-                    'to': 'greg.whalley@enron.com',
-                    'subject': 'Trading Desk Update',
-                    'date': '2001-03-10',
-                    'content': 'Natural gas positions are strong. Let\'s push harder on the West Coast opportunities.',
-                    'score': 0.89
-                }
-            ]
+    # Sample results based on query
+    if 'watkins' in query.lower() or 'sherron' in query.lower():
+        st.session_state.results = [
+            {
+                'from': 'sherron.watkins@enron.com',
+                'to': 'kenneth.lay@enron.com',
+                'subject': 'URGENT: Accounting Concerns',
+                'date': '2001-08-22',
+                'content': 'I have serious concerns about our accounting practices. This could be a major problem for the company.',
+                'score': 0.98
+            },
+            {
+                'from': 'sherron.watkins@enron.com',
+                'to': 'legal@enron.com',
+                'subject': 'Legal Meeting',
+                'date': '2001-07-10',
+                'content': 'Met with legal counsel to discuss the off-balance-sheet entities. The risk is significant.',
+                'score': 0.92
+            }
+        ]
     else:
-        # Sample results based on query
-        if 'watkins' in query.lower() or 'sherron' in query.lower():
-            st.session_state.results = [
-                {
-                    'from': 'sherron.watkins@enron.com',
-                    'to': 'kenneth.lay@enron.com',
-                    'subject': 'URGENT: Accounting Concerns',
-                    'date': '2001-08-22',
-                    'content': 'I have serious concerns about our accounting practices. This could be a major problem for the company.',
-                    'score': 0.98
-                },
-                {
-                    'from': 'sherron.watkins@enron.com',
-                    'to': 'legal@enron.com',
-                    'subject': 'Legal Meeting',
-                    'date': '2001-07-10',
-                    'content': 'Met with legal counsel to discuss the off-balance-sheet entities. The risk is significant.',
-                    'score': 0.92
-                }
-            ]
-        else:
-            st.session_state.results = [
-                {
-                    'from': 'jeff.dasovich@enron.com',
-                    'to': 'kenneth.lay@enron.com',
-                    'subject': 'California Energy Market Analysis',
-                    'date': '2001-05-15',
-                    'content': 'Ken, the California market is showing significant volatility. Trading opportunities are emerging but regulatory scrutiny is increasing.',
-                    'score': 0.98
-                },
-                {
-                    'from': 'sherron.watkins@enron.com',
-                    'to': 'kenneth.lay@enron.com',
-                    'subject': 'URGENT: Accounting Concerns',
-                    'date': '2001-08-22',
-                    'content': 'I have serious concerns about our accounting practices. This could be a major problem for the company.',
-                    'score': 0.96
-                }
-            ]
+        st.session_state.results = [
+            {
+                'from': 'jeff.dasovich@enron.com',
+                'to': 'kenneth.lay@enron.com',
+                'subject': 'California Energy Market Analysis',
+                'date': '2001-05-15',
+                'content': 'Ken, the California market is showing significant volatility. Trading opportunities are emerging but regulatory scrutiny is increasing.',
+                'score': 0.98
+            },
+            {
+                'from': 'sherron.watkins@enron.com',
+                'to': 'kenneth.lay@enron.com',
+                'subject': 'URGENT: Accounting Concerns',
+                'date': '2001-08-22',
+                'content': 'I have serious concerns about our accounting practices. This could be a major problem for the company.',
+                'score': 0.96
+            }
+        ]
     
     # Detect entity
     st.session_state.entity = detect_entity(st.session_state.results)
