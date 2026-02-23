@@ -572,8 +572,8 @@ st.markdown('<div class="dashboard">', unsafe_allow_html=True)
 st.markdown("""
 <div class="header">
     <div class="brand">
-        <h1>🏛️ AURUM INTELLIGENCE</h1>
-        <p>Enterprise Knowledge Graph · Real-time Analytics</p>
+        <h1>🏛️ AI GRAPH BUILDER</h1>
+        <p>Enterprise Intelligence Platform</p>
     </div>
     <div class="badge">
         <span class="dot"></span>
@@ -955,7 +955,7 @@ else:
     st.markdown("""
     <div style="background: white; border-radius: 30px; padding: 4rem; text-align: center; border: 1px solid #e2e8f0;">
         <div style="font-size: 5rem; margin-bottom: 1.5rem;">🏛️</div>
-        <h2 style="color: #0f172a; font-weight: 500; margin-bottom: 0.5rem;">Enterprise Intelligence Platform</h2>
+        <h2 style="color: #0f172a; font-weight: 500; margin-bottom: 0.5rem;">AI Knowledge Graph Builder</h2>
         <p style="color: #64748b; max-width: 500px; margin: 0 auto;">Enter a search query to explore the knowledge graph and uncover hidden patterns in communications.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -963,7 +963,7 @@ else:
 # --- Footer ---
 st.markdown("""
 <div class="footer">
-    <div>© 2026 Aurum Intelligence · Enterprise Edition</div>
+    <div>© 2026 AI Graph Builder · Enterprise Edition</div>
     <div style="display: flex; gap: 2rem;">
         <span>Security</span>
         <span>Compliance</span>
