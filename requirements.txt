@@ -8,6 +8,6 @@ langchain
 langchain-huggingface
 langchain-pinecone
 langchain-neo4j
-pinecone-client
+pinecone
 neo4j
 python-dotenv
