@@ -13,7 +13,7 @@
   
   **Hybrid RAG · Real-time Graph Intelligence · SOC2-Ready**
   
-  [📊 Live Demo](https://your-app.streamlit.app) • [📖 Documentation](docs/) • [🔐 Security](SECURITY.md) • [📈 Case Study](docs/case-study.md)
+  [📊 Live Demo]([https://your-app.streamlit.app](https://sabaridevk5-ai-enterprise-knowledge-graph-app-gu8t3s.streamlit.app/)) • [📖 Documentation](docs/) • [🔐 Security](SECURITY.md) • [📈 Case Study](docs/case-study.md)
 
 </div>
 
