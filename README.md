@@ -18,13 +18,13 @@
 
 ## 📋 Overview
 
-The AI Knowledge Graph Builder is a platform that turns thousands of corporate emails (the Enron dataset) into an interactive, searchable intelligence dashboard. 
+The **AI Knowledge Graph Builder** transforms massive archives of corporate communications (like the Enron email dataset) into an interactive, real-time intelligence dashboard. 
 
-Instead of just searching for keywords, this system combines **Semantic Search** (understanding the actual meaning of the text) with **Graph Networking** (mapping exactly who is talking to whom) to help investigators instantly find hidden risks and key influencers within a company.
+By combining **Semantic Vector Search** (to understand the context of conversations) with **Graph Database Networking** (to map exact relationships), this platform allows compliance teams and executives to instantly uncover hidden risks, key influencers, and information bottlenecks.
 
 ---
 
-## 🏗️ How It Works (Architecture)
+## 🏗️ Architecture
 
 ```mermaid
 graph TB
@@ -50,17 +50,17 @@ graph TB
 
 ## ✨ Key Features
 
-* 🔍 **Hybrid Intelligence:** Get answers backed by both semantic meaning (Pinecone) and verified employee relationships (Neo4j).
-* 🕸️ **Live Network Graph:** Explore an interactive map of communication that automatically rebuilds and centers on the people in your search results.
-* 🛡️ **Zero-Trust Security:** Built with strict security standards. Absolutely no hardcoded passwords; all database keys are secured via cloud vaults.
-* 🏃‍♂️ **Agile Development:** Developed in 4 iterative sprints. You can view the complete product backlog, daily stand-ups, and retrospectives in our [Agile Tracking Document](https://www.google.com/search?q=Sabaridev%2520K_%2520Agile%2520document.xlsx).
+* 🔍 **Hybrid Intelligence:** Search results are grounded in both semantic meaning (Pinecone) and verified structural relationships (Neo4j).
+* 🕸️ **Live Network Graph:** An interactive communication map that automatically rebuilds and centers around the key entities in your search results.
+* 🛡️ **Zero-Trust Security:** Built to enterprise standards. No hardcoded passwords; all API keys are securely managed via cloud vaults.
+* 🏃‍♂️ **Agile Methodology:** Developed in 4 iterative sprints. View our complete product backlog, sprint tracking, and retrospectives in the [Agile Tracking Document](https://www.google.com/search?q=Sabaridev%2520K_%2520Agile%2520document.xlsx).
 
 ---
 
 ## 💻 Technology Stack
 
-* **Frontend:** Streamlit, Plotly (for interactive visualizations)
-* **AI & Orchestration:** LangChain, HuggingFace (`all-MiniLM-L6-v2` embedding model)
+* **Frontend:** Streamlit, Plotly (Interactive Visualizations)
+* **AI & NLP:** HuggingFace (`all-MiniLM-L6-v2` embedding model), LangChain
 * **Databases:** Pinecone (Vector Store), Neo4j AuraDB (Graph Store)
 * **Language:** Python 3.13
 
@@ -69,15 +69,15 @@ graph TB
 ## 📁 Repository Structure
 
 ```text
-ai-knowledge-graph-builder/
+AI-Enterprise-Knowledge-Graph/
 ├── 📂 src/
-│   ├── app.py                      # Main Streamlit dashboard
 │   ├── milestone1_preprocessing.py # Data cleaning scripts
 │   ├── milestone2_graph_build.py   # Neo4j connection logic
 │   ├── milestone3_semantic_search.py
 │   └── m4_upload_to_pinecone.py    # Vector database scripts
 ├── 📂 data/                        # Raw and cleaned CSV files
-├── 📄 Sabaridev K_ Agile document.xlsx # ⬅️ Agile Project Management Tracker
+├── 📄 app.py                       # Main Streamlit dashboard application
+├── 📄 Sabaridev K_ Agile document.xlsx # Agile Project Management Tracker
 ├── 📄 requirements.txt             # Python dependencies
 ├── 📄 .env.example                 # Template for local API keys
 ├── 📄 SECURITY.md                  # Security and compliance guidelines
@@ -91,8 +91,8 @@ ai-knowledge-graph-builder/
 
 1. **Clone the repository:**
 ```bash
-git clone [https://github.com/yourusername/ai-knowledge-graph-builder.git](https://github.com/yourusername/ai-knowledge-graph-builder.git)
-cd ai-knowledge-graph-builder
+git clone [https://github.com/sabaridevk5/AI-Enterprise-Knowledge-Graph.git](https://github.com/sabaridevk5/AI-Enterprise-Knowledge-Graph.git)
+cd AI-Enterprise-Knowledge-Graph
 
 ```
 
@@ -104,10 +104,10 @@ pip install -r requirements.txt
 ```
 
 
-3. **Configure Environment:** Rename `.env.example` to `.env` and paste in your Pinecone and Neo4j credentials.
+3. **Configure Environment:** Rename `.env.example` to `.env` and insert your Pinecone and Neo4j credentials.
 4. **Launch the Dashboard:**
 ```bash
-streamlit run src/app.py
+streamlit run app.py
 
 ```
 
